@@ -1,0 +1,28 @@
+﻿@using GameLogic
+
+<h4>Output</h4>
+<mark>@WinCondition</mark><br/>
+@foreach (var line in Printer.TextLines)
+{
+    @line<br/>
+}
+
+
+@code {
+    [Parameter]
+    public PrinterOutput Printer { get; set; }
+
+    [Parameter]
+    public string WinCondition { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        Printer.PrinterOutputChanged += (sender, args) =>
+        {
+            this.StateHasChanged();
+        };
+    }
+
+}

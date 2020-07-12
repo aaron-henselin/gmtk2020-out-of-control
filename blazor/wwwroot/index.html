@@ -1,0 +1,243 @@
+﻿<html>
+<head>
+    <title>Out Of Control Flow</title>
+    <link href="css/bootstrap.css" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="js/bootstrap.js"></script>
+    <!--
+    <link rel="stylesheet" href="https://unpkg.com/@progress/kendo-theme-default@latest/dist/all.css" />
+
+
+
+    <link href="https://unpkg.com/@progress/kendo-theme-material@latest/dist/all.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/98.css" />
+
+    <script src="https://kendo.cdn.telerik.com/blazor/2.15.0/telerik-blazor.min.js" defer></script>
+    -->
+
+
+    <style>
+
+        .btn-primary.btn-lg:not(:disabled):not(.disabled):active {
+            top: 3px !important;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            /*visibility: hidden;*/
+        }
+
+        .drawer {
+            width: 30%;
+            display: table-cell;
+            min-width: 300px;
+        }
+
+        .viewport {
+            width: 70%;
+            display: table-cell;
+            padding: 20px;
+        }
+
+        th {
+            text-align: center;
+            width: 25%;
+        }
+
+        table {
+            width: 100%;
+        }
+
+        td.legend-left {
+            padding: 10px;
+        }
+
+        td.mem {
+            border: 0.875px solid #bbbbbb;
+            width: 20%;
+            height: 30px;
+            padding: 3px;
+        }
+
+            td.mem table {
+                width: 100%;
+                text-align: center;
+            }
+
+        .encrypted {
+            color: red;
+        }
+
+        td.mem.Cold {
+        }
+
+        td.mem.Read {
+            border-color: #00aaaa;
+            border-style: solid;
+            background-color: #00aaaa;
+            color: white !important;
+        }
+
+        td.mem.Write {
+            border-color: red;
+            border-style: solid;
+            background-color: red;
+            color: white !important;
+        }
+
+        pre {
+            height: 200px;
+        }
+
+        .cpu-activity-log {
+            min-height: 200px;
+        }
+
+        .help-container img{
+            padding: 5px;
+            width: 100%;
+        }
+        html, body {
+            height: 100%;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+        .content {
+            flex: 1 0 auto;
+        }
+        .footer {
+            flex-shrink: 0;
+        }
+
+        .list-group-item {
+            padding-top: 1px;
+            padding-bottom: 1px;
+        }
+
+    </style>
+
+</head>
+<body>
+
+    <!-- Navbar
+    ================================================== -->
+    <div class="navbar navbar-expand-lg fixed-top navbar-dark bg-primary">
+        <div class="container">
+            <a href="../" class="navbar-brand">OUT_OF_CONTROL_FLOW.EXE</a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarResponsive">
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" id="themes">Jump To A Puzzle <span class="caret"></span></a>
+                        <div class="dropdown-menu" aria-labelledby="themes">
+                            <a class="dropdown-item" href="/">(1) Anti-HelloWorld</a>
+                            <a class="dropdown-item" href="/Scenario2">(2) Encrypted luggage passwords</a>
+                            <a class="dropdown-item" href="/Scenario3">(3) The one that involves lateral thinking</a>
+                            <a class="dropdown-item" href="/Scenario4">(4) Misdirection</a>
+                        </div>
+                    </li>
+
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="ReadMeTxt">ReadMe.Txt</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="ThankYou">About.Txt</a>
+                    </li>
+
+                </ul>
+
+            </div>
+        </div>
+    </div>
+
+
+
+    <div class="content">
+        <myApp>
+            <h1 class="mb-4">Downloading ~8mb assets. This usually takes less than 5 seconds, but could be longer on a slow connection.</h1>
+            <div style="text-align: center; width: 100%;">
+                <pre style="color: white; width: 500px;">
+    __                      __    __ ____  _____
+   / /_   _____ ____   ____/ /  _/_// __ \/ ___/
+  / __ \ / ___// __ \ / __  / _/_/ / / / /\__ \ 
+ / /_/ /(__  )/ /_/ // /_/ /_/_/  / /_/ /___/ / 
+/_.___//____/ \____/ \__,_//_/    \____//____/  
+==============================================================
+bitlevel-security on disk operating system
+==============================================================
+PRE-ALLOCATING MEMORY
+ENCRYPTING DISKS
+
+
+
+</pre>
+            </div>
+
+
+        </myApp>
+    </div>
+
+    <div class="footer">
+        <div id="music" style="width: 300px;">
+            <div class="mt-4" id="music_prompt">
+
+                <div class="jumbotron">
+
+                    <h2>Background Music</h2>
+                    <i>
+                        Got a pair of ears? I recommend playing this game set to the dulcet tones of Artificial OS by Corrupted Data Corp™.
+                        And then you should buy the album.
+                    </i><br />
+                    <b>It's really good.</b>
+                    <button id="bandcamp_launch" class="btn btn-primary btn-lg my-4" onclick="jsHelpers.startBandcamp()">Tune In</button>
+                    <!--<a class="btn btn-primary btn-lg my-4" href="spotify:album:4iXJfZ6PEqPObEjjKSbRq3">Open In Spotify</a>-->
+                </div>
+
+            </div>
+            <div id="bandcamp_frame" style="display: none;">
+
+            </div>
+        </div>
+    </div>
+
+
+
+
+    <script src="_framework/blazor.webassembly.js"></script>
+    <script>
+
+        var jsHelpers = {};
+        jsHelpers.startBandcamp = function () {
+
+            $(music_prompt).hide();
+            var node = $('<iframe style="border: 0; width: 100%; height: 120px;" src="https://bandcamp.com/EmbeddedPlayer/album=2574762562/size=large/bgcol=333333/linkcol=ffffff/tracklist=false/artwork=small/track=2658197655/transparent=true/" seamless><a href="http://deaddiskdrive.bandcamp.com/album/artificial-os">Artificial OS by Corrupted Data Corp™</a></iframe>');
+            $(bandcamp_frame).show().append(node);
+        }
+
+
+                //jsHelpers.enableAudio = false;
+                //jsHelpers.toggleAudio = function () {
+                //    jsHelpers.enableAudio = !jsHelpers.enableAudio;
+                //    jsHelpers.checkAudio();
+                //    return jsHelpers.enableAudio;
+                //}
+                //jsHelpers.checkAudio = function () {
+
+                //    if (jsHelpers.enableAudio) {
+                //        if (backgroundaudio.paused)
+                //            backgroundaudio.play();
+                //    } else {
+                //        backgroundaudio.pause();
+                //    }
+
+                //}
+                //_386 = { onePass: true, speedFactor: 1.25 };
+    </script>
+</body>
+    </html>

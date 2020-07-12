@@ -1,0 +1,56 @@
+﻿@page "/ReadmeTxt"
+
+<div class="container help-container mt-4">
+    <div class="row">
+        <div class="col">
+            <h1>ReadMe.Txt</h1>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <h2>
+                CPU Activity
+            </h2>
+            <p>
+                The CPU Activity monitory will display in order of the most recent instruction to last.
+                The statement line of the program will display next to the command executed. When the program starts again, the log will append without clearing, however, the statement number will reset to 0.
+            </p>
+        </div>
+        <div class="col-6">
+            <img src="img/Help_CPU.PNG"/>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <h2>
+                Memory Analyzer
+            </h2>
+            <p>
+                Memory is arranged in a coordinate structure. Each 'cell' is four charcters and is identified by an X number and a Y alpha.
+                As the cpu executes instructions it may read and write to memory or disk. A memory cell will "light up" as its accessed. A READs is represented by the cell turning green.
+                A WRITE is represent by the cell turning red.
+            </p>
+        </div>
+        <div class="col-6">
+            <img src="img/Help_Memory.PNG"/>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <h2>
+                User Input
+            </h2>
+            <p>
+                This is your only input into the system, but don't underestimate it. The text you enter can be a trojan horse that brings the system to its knees.
+            </p>
+        </div>
+        <div class="col-6">
+            <img src="img/Help_UserInput.PNG"/>
+        </div>
+    </div>
+
+</div>
+
+@code {
+
+}

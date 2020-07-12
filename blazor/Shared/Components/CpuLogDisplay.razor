@@ -1,0 +1,30 @@
+﻿@using GameLogic
+
+    <ul class="list-group cpu-activity-log">
+        @{
+            var recentLogs = Log.entries.AsReadOnly().Reverse();
+        }
+        @foreach (var entry in recentLogs)
+        {
+            <li class="list-group-item">@entry</li>
+        }
+    </ul>
+
+
+
+@code {
+    [Parameter]
+    public CpuLog Log { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        Log.LogChanged += (sender, args) =>
+        {
+
+            this.StateHasChanged();
+        };
+    }
+
+}

@@ -1,0 +1,59 @@
+﻿@page "/Scenario2"
+@using GameLogic
+@using Microsoft.AspNetCore.Components.Web
+@inherits gmtk2020_blazor.IndexBase
+@using gmtk2020_blazor.Helpers
+@using Telerik;
+@using Telerik.Blazor.Components
+@using gmtk2020_blazor.Shared.Components
+@using Shared.Components
+
+<CascadingValue Value="@this">
+    <WinBanner />
+</CascadingValue>
+
+<div class="px-4">
+
+    <OperatingSystemDrawer Scenario="@Scenario"></OperatingSystemDrawer>
+
+    <div class="viewport">
+        <h3>Scenario 2</h3>
+        @{
+            var winCondition = "Success is achieved when 'ACCESS GRANTED' is a line in the output";
+        }
+        <p>
+            So far you've seen the general command 'PUT' which shifts bits around.
+            Passwords however are validated using the ASSERT instruction, and the result ('ACCESS GRANTED' or 'ACCESS DENIED') is outputed.
+            This program seems determined to only accept a valid password. See what you can do about that. @winCondition
+        </p>
+
+        <CascadingValue Value="@this">
+            <KeyboardEntry
+                Prompt="Please enter your pin number."
+                Instruction="^ Can't remember your pin number? Try '1234'. That's what I use for my luggage."
+                           LaunchAction="@(x => this.Launch(x))">
+
+            </KeyboardEntry>
+        </CascadingValue>
+
+            <PrinterOutputDisplay Printer="@Scenario.Printer" WinCondition="@winCondition"></PrinterOutputDisplay>
+      
+    </div>
+</div>
+
+
+
+@code {
+
+    @code {
+
+        protected override void OnInitialized()
+        {
+            base.OnInitialized();
+
+            this.Scenario = new WhatsThePasswordScenario();
+        }
+
+    }
+
+}

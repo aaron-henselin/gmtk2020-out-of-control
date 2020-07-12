@@ -1,0 +1,82 @@
+﻿@using gmtk2020_blazor
+
+
+@using Microsoft.AspNetCore.Components.Web
+
+
+@if (_won)
+{
+    <div class="modal" style="display: block; position: relative">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title">Hacked!</div>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        @*<span aria-hidden="true">x</span>*@
+                    </button>
+                </div>
+                @if (_nextExists)
+                {
+                    <div class="modal-body">
+                        <p>You win! Let's make it harder.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" @onclick="@(() => Continue())" class="btn btn-primary">Bring it on</button>
+                    </div>
+                }
+                else
+                {
+                    <div class="modal-body">
+                        <p>You win!</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" @onclick="@(() => Continue())" class="btn btn-primary">Truly, the leetest of the hackers.</button>
+                    </div>
+                }
+
+            </div>
+        </div>
+    </div>
+
+}
+
+        @inject NavigationManager NavigationManager
+        @code {
+
+            bool _won;
+            bool _nextExists;
+            string _next;
+
+            [CascadingParameter]
+            public IndexBase ActiveGame { get; set; }
+
+            protected override void OnParametersSet()
+            {
+                base.OnParametersSet();
+
+                _next  = ActiveGame.Scenario.NextScenario;
+                _nextExists = !string.IsNullOrWhiteSpace(_next);
+                ActiveGame.WinConditionRaised += (sender, args) =>
+                {
+                    _won = true;
+                    this.StateHasChanged();
+                };
+            }
+
+            private void Continue()
+            {
+                
+                if (_nextExists)
+                {
+                    NavigationManager.NavigateTo(_next);
+                }
+                else
+                {
+                    NavigationManager.NavigateTo("ThankYou");
+                }
+
+            }
+
+        }
+
+        

@@ -1,0 +1,35 @@
+﻿@using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Components.Web
+
+
+    <div class="jumbotron mb-4">
+        <h2>Background Music</h2>
+
+        @if (_bandcampOpen)
+        {
+            <iframe style="border: 0; width: 100%; height: 120px;" src="https://bandcamp.com/EmbeddedPlayer/album=2574762562/size=large/bgcol=333333/linkcol=ffffff/tracklist=false/artwork=small/track=2658197655/transparent=true/" seamless><a href="http://deaddiskdrive.bandcamp.com/album/artificial-os">Artificial OS by Corrupted Data Corp™</a></iframe>
+        }
+        else
+        {
+            <button class="btn btn-primary btn-lg my-4" @onclick="@(() => Toggle())">Open In Bandcamp</button>
+        }
+        
+        <a class="btn btn-primary btn-lg my-4" href="spotify:album:4iXJfZ6PEqPObEjjKSbRq3">Open In Spotify</a>
+        
+
+    </div>
+
+
+
+@inject IJSRuntime Runtime
+@code {
+
+    bool _bandcampOpen = false;
+
+    void Toggle()
+    {
+        _bandcampOpen = !_bandcampOpen;
+    }
+
+
+}

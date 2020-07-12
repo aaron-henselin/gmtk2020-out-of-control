@@ -1,0 +1,103 @@
+﻿
+@inherits ComponentBase
+@using GameLogic
+
+@if (this.Region != null)
+{
+
+    <table>
+
+
+    <tr>
+        <td></td>
+        @for (int x = 0; x < this.Region.SizeColumns; x++)
+            {
+                <th>
+                    @x
+                </th>
+            }
+    </tr>
+
+    @for (int y = 0; y < this.Region.SizeRows; y++)
+        {
+    <tr>
+        <td class="legend-left">
+            @Convert.ToChar(y + (int) 'A')
+        </td>
+        @for (int x = 0; x < this.Region.SizeColumns; x++)
+                {
+                    var coord = new MemoryCoordinate {X = x, Y = y, DriveId = Region.DriveId};
+
+        <td class="mem @Region.Current[coord].AccessState">
+
+            
+                <table>
+                    <tr>
+                        @{
+                            var isEncrypted = this.Region.EncryptionState[coord];
+                            var displayValue = this.Region.Current[coord].Value.PadRight(4, ' ');
+                            for (int i = 0; i < displayValue.Length; i++)
+                            {
+                                var printChar = displayValue[i];
+                                if (isEncrypted)
+                                {
+                                    <td class="encrypted">*</td>
+                                }
+                                else if (printChar == ' ')
+                                {
+                                    <td>&nbsp;</td>
+                                }
+                                else
+                                {
+                                    <td>@printChar</td>
+                                }
+
+
+                            }
+                        }
+                    </tr>
+                </table>
+                
+                
+            
+
+
+
+        </td>
+                }
+    </tr>
+        }
+
+</table>
+}
+
+
+@code {
+
+
+    [Parameter]
+    public AddressableRegion Region { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        if (this.Region == null)
+            Console.WriteLine("region is not defined.");
+
+        this.Region.RegionUpdated += (sender, args) =>
+        {
+
+            //Console.WriteLine("Region Updated "+args.Coordinate);
+            //if (args.Coordinate != null)
+            //{
+            //   Console.WriteLine(this.Region.Current[args.Coordinate.Value].AccessState);
+            //}
+
+            this.StateHasChanged();
+
+        };
+    }
+
+}
+

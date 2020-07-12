@@ -1,0 +1,72 @@
+﻿@page "/"
+@using GameLogic
+@using Microsoft.AspNetCore.Components.Web
+@inherits gmtk2020_blazor.IndexBase
+@using gmtk2020_blazor.Helpers
+@using Telerik;
+@using Telerik.Blazor.Components
+@using gmtk2020_blazor.Shared.Components
+@using Shared.Components
+
+<CascadingValue Value="@this">
+    <WinBanner/>
+</CascadingValue>
+
+        <div class="px-4">
+
+            <OperatingSystemDrawer Scenario="@Scenario"></OperatingSystemDrawer>
+
+            <div class="viewport">
+                <h1>(Out of) Control Flow</h1>
+                <p>
+                    The goal of the game is to subvert the expected control flow of a program
+                    by tampering with the contents of memory. It is based on the real-life
+                    buffer overrun threats that have plagued computer science since 1972.
+                </p>
+                
+                @{
+                    var winCondition = "Success is achieved when the output has at least one line of text that is not the phrase 'HELLO, WORLD.'";
+                }
+
+                <h3>Scenario 1</h3>
+                <p>
+                    Outputing "HELLO, WORLD" is the introductory exercise for every programming language out there.
+                    Seems fitting that the tutorial is then to subvert a HELLO, WORLD program. @winCondition
+                 
+
+                </p>
+
+                <CascadingValue Value="@this">
+                    <KeyboardEntry 
+                        Prompt="What's your favorite number between 1 and 10?"
+                        Instruction="^ Please answer truthfully. This program knows when you're lying."
+                                   LaunchAction="@(x => this.Launch(x))">
+
+                    </KeyboardEntry>
+                </CascadingValue>
+                
+                <p>
+                    <i>
+                        Hint: Watch the CPU Activity and memory contents change as you run the program. Even if you don't have a formal manual on the CPU instructions, you can probably get the gist of what it's doing.
+                        If the interface isn't making sense check the <a href="/ReadMeTxt">ReadMe</a> for an overview. Don't forget, each puzzle has hints you use if you hit a brick wall.
+                    </i>
+                </p>
+                <PrinterOutputDisplay Printer="@Scenario.Printer" WinCondition=@winCondition></PrinterOutputDisplay>
+
+                
+           
+            </div>
+        </div>
+
+
+     
+        @code {
+
+            protected override void OnInitialized()
+            {
+                base.OnInitialized();
+
+                this.Scenario = new HelloWorldScenario();
+            }
+
+        }

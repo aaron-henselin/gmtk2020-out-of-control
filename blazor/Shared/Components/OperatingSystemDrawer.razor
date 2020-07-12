@@ -1,0 +1,56 @@
+﻿@using GameLogic
+
+@using Shared.Components
+<div class="drawer">
+
+
+
+    <div class="window">
+        <h4>CPU Activity</h4>
+        <div class="window-body">
+            <CpuLogDisplay Log="@Scenario.CpuLog">
+
+            </CpuLogDisplay>
+        </div>
+
+
+    </div>
+    <div class="window my-4">
+        <h4>Memory Contents</h4>
+        <div class="window-body mt-2">
+            <AddressableRegionTable Region="@Scenario.Memory">
+
+            </AddressableRegionTable>
+        </div>
+    </div>
+    @for (int i = 0; i < Scenario.Disks.Count; i++)
+    {
+        var readonlyTitle = Scenario.Disks[i].ReadOnly ? "READONLY" : "READWRITE";
+        <div class="window">
+            <h2>Drive @i:&nbsp;@Scenario.Disks[i].VolumeName, @readonlyTitle</h2>
+            
+            <div class="window-body mt-2">
+                <AddressableRegionTable Region="@Scenario.Disks[i]">
+
+                </AddressableRegionTable>
+            </div>
+
+        </div>
+    }
+    <hr class="mt-4" />
+    <HintReveal Hints="@Scenario.Hints"></HintReveal>
+
+    <hr class="my-4"/>
+    @*<WinAmp/>*@
+
+
+</div>
+
+@code {
+
+    [Parameter]
+    public Scenario Scenario { get; set; }
+
+
+
+}

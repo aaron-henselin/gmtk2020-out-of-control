@@ -20,16 +20,51 @@ namespace gmtk2020_blazor
 
         public EventHandler<EventArgs> WinConditionRaised;
 
-        public bool ManualProgramRunning { get; set; }
+        //public bool ManualProgramRunning { get; set; }
+        public string ViewportProcessName { get; set; }
+
+        public Process ViewportProcess
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(ViewportProcessName))
+                    return null;
+
+                return Scenario.Processes[ViewportProcessName];
+            }
+        }
+
+        public ProcessState ViewportProcessState
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(ViewportProcessName))
+                    return null;
+
+                if (!Timer.ProcessStates.ContainsKey(ViewportProcessName))
+                    return null;
+
+                return Timer.ProcessStates[ViewportProcessName];
+            }
+        }
 
         public void Launch(string keyboardInput)
         {
             Console.WriteLine("Launching with keyboard input "+keyboardInput);
             Scenario.KeyboardInput.Text = keyboardInput;
 
-            Timer.ForegroundCpuContext = new CpuCommandContext();
-            Timer.ForegroundCpuCycle = 0;
-            ManualProgramRunning = true;
+            if (Timer.ProcessStates.ContainsKey(ViewportProcessName))
+                Timer.ProcessStates.Remove(ViewportProcessName);
+
+            Timer.ProcessStates.Add(ViewportProcessName, new ProcessState
+            {
+                CpuCycle=0,
+                CommandContext = new CpuCommandContext
+                {
+                    Scenario = Scenario
+                }
+            });
+
             RunningStatusChanged?.Invoke(this,new EventArgs());
         }
 
@@ -43,50 +78,83 @@ namespace gmtk2020_blazor
 
         private void SimulationTick()
         {
-
-            if (Scenario.BackgroundProgram != null)
+            foreach (var processName in Scenario.Processes.Keys)
             {
+                var process = Scenario.Processes[processName];
 
-                Timer.BackgroundCpuCycle++;
-                Scenario.BackgroundProgram.RunNextStep(Scenario, Timer.BackgroundCpuCycle-1, Timer.BackgroundCpuContext);
-                
+                if (Timer.ProcessStates.ContainsKey(processName))
+                {
+                    var processState = Timer.ProcessStates[processName];
+                        processState.CpuCycle++;
 
-                var ended = Timer.BackgroundCpuCycle == Scenario.BackgroundProgram.AllCommands.Count;
-                if (ended)
-                    Timer.BackgroundCpuCycle = 0;
+                    bool exceptional = false;
+                    try
+                    {
+                        process.Source.RunNextStep(process, processState.CpuCycle - 1, processState.CommandContext);
+                    }
+                    catch (Exception e)
+                    {
+                        exceptional = true;
+                    }
+                  
+
+                    var ended = exceptional || processState.CpuCycle == process.Source.AllCommands.Count;
+                    if (ended)
+                    {
+                        var isWinCondition = Scenario.IsAtWinCondition();
+                        if (isWinCondition)
+                            WinConditionRaised?.Invoke(this, new EventArgs());
+
+                        if (process.IsBackgroundProcess && !exceptional)
+                            processState.CpuCycle = 0;
+                        else
+                        {
+                            Timer.ProcessStates.Remove(processName);
+                            RunningStatusChanged?.Invoke(this, new EventArgs());
+                        }
+                        
+                        if (exceptional)
+                            process.CpuLog.Log("<SEGFAULT>");
+                    }
+
+
+
+                }
+
             }
 
-            if (ManualProgramRunning)
-            {
+
+            //if (ManualProgramRunning)
+            //{
                 
-                Timer.ForegroundCpuCycle++;
+            //    Timer.ForegroundCpuCycle++;
 
-                bool exceptional = false;
-                try
-                {
-                    Scenario.ManualProgram.RunNextStep(Scenario, Timer.ForegroundCpuCycle - 1, Timer.ForegroundCpuContext);
-                }
-                catch (Exception e)
-                {
-                    exceptional = true;
-                    Timer.ForegroundCpuCycle = 0;
-                }
+            //    bool exceptional = false;
+            //    try
+            //    {
+            //        Scenario.ManualProgram.RunNextStep(Scenario, Timer.ForegroundCpuCycle - 1, Timer.ForegroundCpuContext);
+            //    }
+            //    catch (Exception e)
+            //    {
+            //        exceptional = true;
+            //        Timer.ForegroundCpuCycle = 0;
+            //    }
 
-                var ended = exceptional || Timer.ForegroundCpuCycle == Scenario.ManualProgram.AllCommands.Count;
-                if (ended)
-                {
-                    ManualProgramRunning = false;
-                    //Timer.ForegroundCpuCycle = 0;
+            //    var ended = exceptional || Timer.ForegroundCpuCycle == Scenario.ManualProgram.AllCommands.Count;
+            //    if (ended)
+            //    {
+            //        ManualProgramRunning = false;
+            //        //Timer.ForegroundCpuCycle = 0;
 
-                    var isWinCondition = Scenario.IsAtWinCondition();
-                    RunningStatusChanged?.Invoke(this, new EventArgs());
-                    if (isWinCondition)
-                        WinConditionRaised?.Invoke(this, new EventArgs());
+            //        var isWinCondition = Scenario.IsAtWinCondition();
+            //        RunningStatusChanged?.Invoke(this, new EventArgs());
+            //        if (isWinCondition)
+            //            WinConditionRaised?.Invoke(this, new EventArgs());
 
-                    if (exceptional)
-                        Scenario.CpuLog.Log("<SEGFAULT>");
-                }
-            }
+            //        if (exceptional)
+            //            Scenario.CpuLog.Log("<SEGFAULT>");
+            //    }
+            //}
 
             StepRan?.Invoke(new object(), new EventArgs());
         }
@@ -102,6 +170,30 @@ namespace gmtk2020_blazor
         protected override void OnParametersSet()
         {
             Scenario.Initialize();
+
+            if (string.IsNullOrWhiteSpace(ViewportProcessName))
+            {
+                string defaultViewport = Scenario.Processes.FirstOrDefault(x => !x.Value.IsBackgroundProcess).Key;
+                ViewportProcessName = defaultViewport;
+
+            }
+
+            var processNames = Scenario.Processes.Where(x => x.Value.IsBackgroundProcess).Select(x => x.Key);
+            foreach (var backgroundProcessName in processNames)
+            {
+                if (!Timer.ProcessStates.ContainsKey(backgroundProcessName))
+                    Timer.ProcessStates.Add(backgroundProcessName, new ProcessState
+                    {
+                        CpuCycle = 0,
+                        CommandContext = new CpuCommandContext
+                        {
+                            Scenario = Scenario
+                        }
+                    });
+            }
+
+
+
             StartTimer();
         }
 

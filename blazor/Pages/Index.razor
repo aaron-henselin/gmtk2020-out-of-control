@@ -37,12 +37,9 @@
                 </p>
 
                 <CascadingValue Value="@this">
-                    <KeyboardEntry 
-                        Prompt="What's your favorite number between 1 and 10?"
-                        Instruction="^ Please answer truthfully. This program knows when you're lying."
-                                   LaunchAction="@(x => this.Launch(x))">
-
-                    </KeyboardEntry>
+                    <TerminalViewport>
+                        <KeyboardEntry LaunchAction="@(x => this.Launch(x))"></KeyboardEntry>
+                    </TerminalViewport>
                 </CascadingValue>
                 
                 <p>

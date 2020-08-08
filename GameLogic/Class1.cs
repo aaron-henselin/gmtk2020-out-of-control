@@ -89,6 +89,9 @@ namespace GameLogic
 
     public class AddressableRegion
     {
+        public bool IsAttachable { get; set; }
+        public bool IsAttached { get; set; }
+
         public event EventHandler<AddressRegionEventArgs> RegionUpdated;
         public int? DriveId { get; set; }
         public string VolumeName { get; set; }
@@ -167,6 +170,11 @@ namespace GameLogic
             return next;
         }
 
+        public IDictionary<MemoryCoordinate,string> ToDictionary()
+        {
+            return this.Current.ToDictionary(x => x.Key, x => x.Value.Value);
+        }
+
         public void SetMemoryToDefault()
         {
             foreach (var coord in AllCoordinates)
@@ -225,21 +233,31 @@ namespace GameLogic
         public bool InterfaceHelpLink { get; set; }
     }
 
+    public class Process
+    {
+        public CpuLog CpuLog { get; set; } = new CpuLog();
+        public bool IsBackgroundProcess { get; set; } = false;
+        public CpuProgram Source { get; set; }
+        public AddressableRegion Memory { get; set; }
+
+        public string Prompt { get; set; }
+        public string Instruction { get; set; }
+    }
+
     public abstract class Scenario
     {
         public string NextScenario { get; set; }
         public abstract void Initialize();
         public abstract bool IsAtWinCondition();
 
-        public CpuLog CpuLog { get; set; } = new CpuLog();
+        public Dictionary<string,Process> Processes { get; set; }= new Dictionary<string, Process>();
+
+        public void AddProcess(string name,Process process)
+        {
+            Processes.Add(name,process);
+        }
 
 
-        public CpuProgram BackgroundProgram { get; set; }
-
-
-        public CpuProgram ManualProgram { get; set; }
-
-        public AddressableRegion Memory { get; set; }
         public List<AddressableRegion> Disks { get; set; } = new List<AddressableRegion>();
 
         public KeyboardInput KeyboardInput { get; set; } = new KeyboardInput();
@@ -292,7 +310,14 @@ namespace GameLogic
         public override void Initialize()
         {
             NextScenario = "Scenario4";
-            Memory = new AddressableRegion
+
+            var process = new Process
+            {
+                Prompt = "Please enter your 4 character pin number to manage the camera feed.",
+                Instruction = "^ Note: pin number 'HOTDOG' has been disabled due to it not being 4 characters, or a number."
+            };
+
+            var Memory = new AddressableRegion
             {
                 SizeRows = 3,
                 SizeColumns = 4,
@@ -327,28 +352,32 @@ namespace GameLogic
             //Memory.EncryptionState[new MemoryCoordinate { X = 3, Y = 2 }] = true;
 
             Memory.SetMemoryToDefault();
+            process.Memory = Memory;
+
+            
+            var ManualProgram = new CpuProgram();
+            ManualProgram.AllCommands = new List<CpuCommand>();
+
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:0A PRINT"));
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:1A PRINT"));
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:2A PRINT"));
+
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:0B PRINT"));
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:1B PRINT"));
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:2B PRINT"));
+
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KB M:0C"));
 
 
-            this.ManualProgram = new CpuProgram();
-            this.ManualProgram.AllCommands = new List<CpuCommand>();
 
-            this.ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:0A PRINT"));
-            this.ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:1A PRINT"));
-            this.ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:2A PRINT"));
-
-            this.ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:0B PRINT"));
-            this.ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:1B PRINT"));
-            this.ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:2B PRINT"));
-
-            this.ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KB M:0C"));
-
-
-
-            this.ManualProgram.AllCommands.Add(new AssertCpuCommand
+            ManualProgram.AllCommands.Add(new AssertCpuCommand
             {
                 CompareLeft = MediaTarget.FromText("M:0C"),
                 CompareRight = MediaTarget.FromText("0:0,0")
             });
+
+            process.Source = ManualProgram;
+            this.AddProcess("Login.exe",process);
 
             this.Hints.Add(new Hint
             {
@@ -393,7 +422,7 @@ namespace GameLogic
     {
         public override void Initialize()
         {
-            Memory = new AddressableRegion
+            var Memory = new AddressableRegion
             {
                 SizeRows = 3,
                 SizeColumns = 4,
@@ -430,6 +459,19 @@ namespace GameLogic
             disk1.SetDefault(new MemoryCoordinate { DriveId = 1, X = 2, Y = 0 }, "AIT|");
             disk1.SetMemoryToDefault();
             Disks.Add(disk1);
+
+            var disk2 = new AddressableRegion();
+            disk2.VolumeName = "Messages";
+            disk2.DriveId = 1;
+            disk2.SizeRows = 1;
+            disk2.SizeColumns = 4;
+            disk2.IsAttachable = true;
+            disk2.InitializeEmptyMemorySpace();
+            disk2.SetDefault(new MemoryCoordinate { DriveId = 1, X = 0, Y = 0 }, "PLEA");
+            disk2.SetDefault(new MemoryCoordinate { DriveId = 1, X = 1, Y = 0 }, "SE W");
+            disk2.SetDefault(new MemoryCoordinate { DriveId = 1, X = 2, Y = 0 }, "AIT|");
+            disk2.SetMemoryToDefault();
+            Disks.Add(disk2);
             #endregion
 
 
@@ -451,19 +493,28 @@ namespace GameLogic
 
             Memory.SetMemoryToDefault();
 
+            
 
-            this.ManualProgram = new CpuProgram();
-            this.ManualProgram.AllCommands = new List<CpuCommand>();
-            this.ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT XM:1A PRINT"));
-            this.ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT XM:2A PRINT"));
-            this.ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT XM:3A PRINT"));
+            var ManualProgram = new CpuProgram();
+            ManualProgram.AllCommands = new List<CpuCommand>();
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT XM:1A PRINT"));
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT XM:2A PRINT"));
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT XM:3A PRINT"));
 
-            this.ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KB M:2C"));
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KB M:2C"));
 
-            this.ManualProgram.AllCommands.Add(new AssertCpuCommand
+            ManualProgram.AllCommands.Add(new AssertCpuCommand
             {
                 CompareLeft = MediaTarget.FromText("M:2C"),
                 CompareRight = MediaTarget.FromText("0:0,0")
+            });
+
+            AddProcess("Login.exe", new Process
+            {
+                Memory = Memory, Source = ManualProgram,
+                Prompt = "Please enter your password",
+                Instruction = "^ Can't remember your password? Try 'Password'."
+
             });
 
             this.Hints.Add(new Hint
@@ -497,53 +548,6 @@ namespace GameLogic
         }
     }
 
-    public class CameraWipeOutScenario : Scenario
-    {
-        public override void Initialize()
-        {
-            Memory = new AddressableRegion
-            {
-                SizeRows = 3,
-                SizeColumns = 4,
-            };
-            Memory.InitializeEmptyMemorySpace();
-
-
-            Memory.SetDefault(new MemoryCoordinate { X = 0, Y = 1 }, "CAME");
-            Memory.SetDefault(new MemoryCoordinate { X = 1, Y = 1 }, "RA__");
-            Memory.SetDefault(new MemoryCoordinate { X = 2, Y = 1 }, "TOOL");
-
-            Memory.SetDefault(new MemoryCoordinate { X = 0, Y = 2 }, "(C) ");
-            Memory.SetDefault(new MemoryCoordinate { X = 1, Y = 2 }, "1995");
-
-
-            //Memory.SetDefault(new MemoryCoordinate { X = 3, Y = 2 }, "0x51");
-            //Memory.EncryptionState[new MemoryCoordinate { X = 3, Y = 2 }] = true;
-
-            Memory.SetMemoryToDefault();
-
-
-            //this.ManualProgram = new CpuProgram();
-            //this.ManualProgram.AllCommands = new List<CpuCommand>();
-            //this.ManualProgram.AllCommands.Add(new KeyboardCpuCommand
-            //{
-            //    To = new MemoryCoordinate { X = 0, Y = 0 }
-            //});
-            //this.ManualProgram.AllCommands.Add(new ReadCpuCommand
-            //{
-            //    CompareLeft = new MemoryCoordinate { X = 0, Y = 0 },
-            //    CompareRight = new MemoryCoordinate { X = 3, Y = 2 }
-            //});
-
-
-
-        }
-
-        public override bool IsAtWinCondition()
-        {
-            return false;
-        }
-    }
 
     public class WhatsThePasswordScenario : Scenario
     {
@@ -551,7 +555,7 @@ namespace GameLogic
         {
             NextScenario = "Scenario3";
 
-            Memory = new AddressableRegion
+var Memory = new AddressableRegion
             {
                 SizeRows = 3,
                 SizeColumns = 4,
@@ -573,14 +577,19 @@ namespace GameLogic
             Memory.SetMemoryToDefault();
 
 
-            this.ManualProgram = new CpuProgram();
-            this.ManualProgram.AllCommands = new List<CpuCommand>();
-            this.ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KB M:0,0"));
+            var ManualProgram = new CpuProgram();
+            ManualProgram.AllCommands = new List<CpuCommand>();
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KB M:0,0"));
 
-            this.ManualProgram.AllCommands.Add(new AssertCpuCommand
+            ManualProgram.AllCommands.Add(new AssertCpuCommand
             {
                 CompareLeft = MediaTarget.FromText("M:0,0"),
                 CompareRight = MediaTarget.FromText("M:3,2")
+            });
+
+            AddProcess("Login.exe", new Process { Memory = Memory, Source = ManualProgram,
+                Prompt = "Please enter your pin number.",
+                Instruction = "^ Can't remember your pin number? Try '1234'. That's what I use for my luggage."
             });
 
             this.Hints.Add(new Hint
@@ -633,7 +642,7 @@ namespace GameLogic
         {
             NextScenario = "Scenario2";
 
-            Memory = new AddressableRegion
+            var Memory = new AddressableRegion
             {
                 SizeRows = 3,
                 SizeColumns = 4,
@@ -646,12 +655,12 @@ namespace GameLogic
 
             Memory.SetMemoryToDefault();
 
-            this.ManualProgram = new CpuProgram();
-            this.ManualProgram.AllCommands = new List<CpuCommand>();
-            this.ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KB M:0,0"));
-            this.ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:0,1 PRINT"));
-            this.ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:1,1 PRINT"));
-            this.ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:2,1 PRINT"));
+            var ManualProgram = new CpuProgram();
+            ManualProgram.AllCommands = new List<CpuCommand>();
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KB M:0,0"));
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:0,1 PRINT"));
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:1,1 PRINT"));
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:2,1 PRINT"));
 
             this.Hints.Add(new Hint
             {
@@ -671,6 +680,15 @@ namespace GameLogic
             {
                 Title = "BUG REPORT 002",
                 Body = "Addendum to report #1, it looks like the field is not restricted to numbers. I was able to enter the word 'HOTDOG'"
+            });
+
+            AddProcess("hello_word.exe", new Process
+            {
+                Memory = Memory, 
+                Source = ManualProgram,
+                Prompt = "What's your favorite number between 1 and 10?",
+                Instruction = "^ Please answer truthfully. This program knows when you're lying."
+
             });
 
         }

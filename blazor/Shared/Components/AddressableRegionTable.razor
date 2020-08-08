@@ -1,82 +1,114 @@
 ﻿
 @inherits ComponentBase
+@using System.Collections.Generic
 @using GameLogic
 
 @if (this.Region != null)
 {
+   if (this.Region.IsAttachable && !this.Region.IsAttached)
+    {
+        <label class="mb-2">Volume Name</label>
+        <input type="text"
+               class="form-control"
+               @bind-value="@TempVolumeName"
+               @bind-value:event="oninput"
+               autocapitalize="off"
+               autocorrect="off"
+               autocomplete="off"/>
+        
+    }
 
     <table>
 
 
-    <tr>
-        <td></td>
-        @for (int x = 0; x < this.Region.SizeColumns; x++)
+        <tr>
+            <td></td>
+            @for (int x = 0; x < this.Region.SizeColumns; x++)
             {
                 <th>
                     @x
                 </th>
             }
-    </tr>
+        </tr>
 
-    @for (int y = 0; y < this.Region.SizeRows; y++)
+        @for (int y = 0; y < this.Region.SizeRows; y++)
         {
-    <tr>
-        <td class="legend-left">
-            @Convert.ToChar(y + (int) 'A')
-        </td>
-        @for (int x = 0; x < this.Region.SizeColumns; x++)
+            <tr>
+                <td class="legend-left">
+                    @Convert.ToChar(y + (int) 'A')
+                </td>
+                @for (int x = 0; x < this.Region.SizeColumns; x++)
                 {
                     var coord = new MemoryCoordinate {X = x, Y = y, DriveId = Region.DriveId};
 
-        <td class="mem @Region.Current[coord].AccessState">
+                    <td class="mem @Region.Current[coord].AccessState">
 
             
-                <table>
-                    <tr>
-                        @{
-                            var isEncrypted = this.Region.EncryptionState[coord];
-                            var displayValue = this.Region.Current[coord].Value.PadRight(4, ' ');
-                            for (int i = 0; i < displayValue.Length; i++)
-                            {
-                                var printChar = displayValue[i];
-                                if (isEncrypted)
+                        <table>
+                            <tr>
+                                @if (this.Region.IsAttachable && !this.Region.IsAttached)
                                 {
-                                    <td class="encrypted">*</td>
-                                }
-                                else if (printChar == ' ')
-                                {
-                                    <td>&nbsp;</td>
+
+                                    <td>
+                                        <input type="text" class="form-control" maxlength="4" @bind-value="@this.MemoryWorkTable[coord]" @bind-value:event="oninput"/>
+                                    </td>
                                 }
                                 else
                                 {
-                                    <td>@printChar</td>
+                                    var isEncrypted = this.Region.EncryptionState[coord];
+                                    var displayValue = this.Region.Current[coord].Value.PadRight(4, ' ');
+                                    for (int i = 0; i < displayValue.Length; i++)
+                                    {
+                                        var printChar = displayValue[i];
+                                        if (isEncrypted)
+                                        {
+                                            <td class="encrypted">*</td>
+                                        }
+                                        else if (printChar == ' ')
+                                        {
+                                            <td>&nbsp;</td>
+                                        }
+                                        else
+                                        {
+                                    
+                                            <td>@printChar</td>
+                                        }
+                                    }
                                 }
-
-
-                            }
-                        }
-                    </tr>
-                </table>
+                            </tr>
+                        </table>
                 
                 
             
 
 
 
-        </td>
+                    </td>
                 }
-    </tr>
+            </tr>
         }
 
-</table>
+    </table>
 }
 
 
 @code {
 
+    private string TempVolumeName { get; set; }
+
+    private IDictionary<MemoryCoordinate, string> MemoryWorkTable { get; set; }
 
     [Parameter]
     public AddressableRegion Region { get; set; }
+
+    public void ApplyChanges()
+    {
+        foreach (var kvp in MemoryWorkTable)
+            this.Region.Current[kvp.Key] = new MemoryContents {Value = kvp.Value, AccessState = MemoryAccessState.Cold};
+
+        this.Region.VolumeName = TempVolumeName;
+    }
+
 
     protected override void OnParametersSet()
     {
@@ -85,14 +117,10 @@
         if (this.Region == null)
             Console.WriteLine("region is not defined.");
 
+        MemoryWorkTable = this.Region.ToDictionary();
+
         this.Region.RegionUpdated += (sender, args) =>
         {
-
-            //Console.WriteLine("Region Updated "+args.Coordinate);
-            //if (args.Coordinate != null)
-            //{
-            //   Console.WriteLine(this.Region.Current[args.Coordinate.Value].AccessState);
-            //}
 
             this.StateHasChanged();
 

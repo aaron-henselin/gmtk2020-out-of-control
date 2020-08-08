@@ -27,12 +27,9 @@
         </p>
 
         <CascadingValue Value="@this">
-            <KeyboardEntry
-                Prompt="Please enter your password"
-                Instruction="^ Can't remember your password? Try 'Password'."
-                LaunchAction="@(x => this.Launch(x))">
-
-            </KeyboardEntry>
+            <TerminalViewport>
+                <KeyboardEntry LaunchAction="@(x => this.Launch(x))"></KeyboardEntry>
+            </TerminalViewport>
         </CascadingValue>
 
     

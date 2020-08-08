@@ -28,11 +28,9 @@
         </p>
 
         <CascadingValue Value="@this">
-            <KeyboardEntry Prompt="Please enter your 4 character pin number to manage the camera feed."
-                           Instruction="^ Note: pin number 'HOTDOG' has been disabled due to it not being 4 characters, or a number."
-                           LaunchAction="@(x => this.Launch(x))">
-
-            </KeyboardEntry>
+            <TerminalViewport>
+                <KeyboardEntry LaunchAction="@(x => this.Launch(x))"></KeyboardEntry>
+            </TerminalViewport>
         </CascadingValue>
 
   

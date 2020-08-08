@@ -20,10 +20,12 @@ namespace gmtk2020_blazor.Helpers
             _timer.Enabled = true;
         }
 
-        public int BackgroundCpuCycle { get; set; }
-        public int ForegroundCpuCycle { get; set; }
-        public CpuCommandContext ForegroundCpuContext { get; internal set; } = new CpuCommandContext();
-        public CpuCommandContext BackgroundCpuContext { get; internal set; } = new CpuCommandContext();
+        public Dictionary<string, ProcessState> ProcessStates { get; set; } = new Dictionary<string, ProcessState>();
+
+       
+
+        //public CpuCommandContext ForegroundCpuContext { get; internal set; } = new CpuCommandContext();
+        //public CpuCommandContext BackgroundCpuContext { get; internal set; } = new CpuCommandContext();
 
         public event Action OnElapsed;
 
@@ -31,5 +33,11 @@ namespace gmtk2020_blazor.Helpers
         {
             OnElapsed?.Invoke();
         }
+    }
+
+    public class ProcessState
+    {
+        public int CpuCycle { get; set; }
+        public CpuCommandContext CommandContext { get; set; } = new CpuCommandContext();
     }
 }

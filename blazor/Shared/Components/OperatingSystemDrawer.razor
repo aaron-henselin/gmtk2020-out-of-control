@@ -1,56 +1,108 @@
-﻿@using GameLogic
-
+﻿@using System.Reflection.Emit
+@using GameLogic
+@using Microsoft.AspNetCore.Components.Web
 @using Shared.Components
-<div class="drawer">
+    <div class="drawer">
 
 
+        @foreach (var processName in Scenario.Processes.Keys)
+        {
+            var process = Scenario.Processes[processName];
 
-    <div class="window">
-        <h4>CPU Activity</h4>
-        <div class="window-body">
-            <CpuLogDisplay Log="@Scenario.CpuLog">
+            <div @key="@processName">
+                <label>@processName</label>
+                <div class="window">
+                    <h4>CPU Activity</h4>
+                    <div class="window-body">
+                        <CpuLogDisplay Log="@process.CpuLog">
 
-            </CpuLogDisplay>
-        </div>
+                        </CpuLogDisplay>
+                    </div>
+                </div>
+                <div class="window my-4">
+                    <h4>Memory Contents</h4>
+                    <div class="window-body mt-2">
+                        <AddressableRegionTable Region="@process.Memory">
+
+                        </AddressableRegionTable>
+                    </div>
+                </div>
+            </div>
+        }
 
 
-    </div>
-    <div class="window my-4">
-        <h4>Memory Contents</h4>
-        <div class="window-body mt-2">
-            <AddressableRegionTable Region="@Scenario.Memory">
+        @for (int i = 0; i < Scenario.Disks.Count; i++)
+        {
+            var driveNumber = i;
+            var readonlyTitle = Scenario.Disks[i].ReadOnly ? "READONLY" : "READWRITE";
+            var showReadonlyView = !Scenario.Disks[i].IsAttachable || Scenario.Disks[i].IsAttached;
+            <div class="window" @key="@driveNumber">
+                @if (showReadonlyView)
+                {
 
-            </AddressableRegionTable>
-        </div>
-    </div>
-    @for (int i = 0; i < Scenario.Disks.Count; i++)
-    {
-        var readonlyTitle = Scenario.Disks[i].ReadOnly ? "READONLY" : "READWRITE";
-        <div class="window">
-            <h2>Drive @i:&nbsp;@Scenario.Disks[i].VolumeName, @readonlyTitle</h2>
-            
-            <div class="window-body mt-2">
-                <AddressableRegionTable Region="@Scenario.Disks[i]">
+                    <h2>Drive @i:&nbsp;@Scenario.Disks[i].VolumeName, @readonlyTitle</h2>
+                    <div class="window-body mt-2">
+                        <AddressableRegionTable Region="@Scenario.Disks[driveNumber]"/>
+                    </div>
+                }
+                else
+                {
+                    <h2>Drive @driveNumber: {NOT ATTACHED}</h2>
+                    <div class="window-body jumbotron">
+                        <AddressableRegionTable Region="@Scenario.Disks[driveNumber]"  @ref="EditRegion"/>
+                    </div>
 
-                </AddressableRegionTable>
+                }
             </div>
 
-        </div>
-    }
-    <hr class="mt-4" />
-    <HintReveal Hints="@Scenario.Hints"></HintReveal>
+            @if (Scenario.Disks[driveNumber].IsAttachable)
+            {
+                if (Scenario.Disks[driveNumber].IsAttached)
+                {
+                    <button class="btn btn-secondary my-2" @onclick="@(() => Detach(driveNumber))">Detach Drive</button>
+                }
+                else
+                {
+                    <button class="btn btn-secondary my-2" @onclick="@(() => Attach(driveNumber))">Attach Drive</button>
+                }
+            }
+        }
 
-    <hr class="my-4"/>
-    @*<WinAmp/>*@
 
 
-</div>
+        <hr class="mt-4" />
+        <HintReveal Hints="@Scenario.Hints"></HintReveal>
+
+        <hr class="my-4" />
+        @*<WinAmp/>*@
+
+
+    </div>
 
 @code {
 
     [Parameter]
     public Scenario Scenario { get; set; }
 
+    private AddressableRegionTable EditRegion { get; set; }
+
+    private void Detach(int i)
+    {
+        Console.WriteLine("Dettaching: " + i);
+
+        this.Scenario.Disks[i].IsAttached = false;
+        this.StateHasChanged();
+    }
+
+    private void Attach(int i)
+    {
+        Console.WriteLine("Attaching: "+i);
+
+        EditRegion.ApplyChanges();
+
+        this.Scenario.Disks[i].IsAttached = true;
+        this.StateHasChanged();
+    }
 
 
 }

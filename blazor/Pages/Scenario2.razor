@@ -28,12 +28,9 @@
         </p>
 
         <CascadingValue Value="@this">
-            <KeyboardEntry
-                Prompt="Please enter your pin number."
-                Instruction="^ Can't remember your pin number? Try '1234'. That's what I use for my luggage."
-                           LaunchAction="@(x => this.Launch(x))">
-
-            </KeyboardEntry>
+            <TerminalViewport>
+                <KeyboardEntry LaunchAction="@(x => this.Launch(x))"></KeyboardEntry>
+            </TerminalViewport>
         </CascadingValue>
 
             <PrinterOutputDisplay Printer="@Scenario.Printer" WinCondition="@winCondition"></PrinterOutputDisplay>

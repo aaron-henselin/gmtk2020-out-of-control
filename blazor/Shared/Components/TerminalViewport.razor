@@ -1,0 +1,26 @@
+﻿@using Microsoft.AspNetCore.Components.Web
+@using Shared.Components
+
+@foreach (var processKey in ActiveGame.Scenario.Processes.Keys)
+{
+    var processName = processKey;
+    <label @onclick="@(() => SetTab(processName))">@processName</label>
+    @ChildContent
+}
+
+
+@code {
+
+    [CascadingParameter]
+    public IndexBase ActiveGame { get; set; }
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+    private void SetTab(string newProcessName)
+    {
+        ActiveGame.ViewportProcessName = newProcessName;
+        this.StateHasChanged();
+    }
+
+}

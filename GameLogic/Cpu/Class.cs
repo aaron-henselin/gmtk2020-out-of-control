@@ -11,6 +11,8 @@ namespace gmtk2020_blazor.Models.Cpu
         public class CpuCommandContext
         {
             public Dictionary<int,string> Variables { get; set; } = new Dictionary<int, string>();
+
+            public Scenario Scenario { get; set; }
         }
 
 
@@ -18,18 +20,18 @@ namespace gmtk2020_blazor.Models.Cpu
         public class CpuProgram
         {
             public List<CpuCommand> AllCommands { get; set; } = new List<CpuCommand>();
-            public void RunNextStep(GameLogic.Scenario scenario, int CurrentStep, CpuCommandContext context)
+            public void RunNextStep(Process process, int CurrentStep, CpuCommandContext context)
             {
                 
                
-                scenario.Memory.CoolOff();
-                foreach (var drive in scenario.Disks)
+                process.Memory.CoolOff();
+                foreach (var drive in context.Scenario.Disks)
                     drive.CoolOff();
 
                 var command = AllCommands[CurrentStep];
-                scenario.CpuLog.Log(CurrentStep + ": "+ command.ToString());
+                process.CpuLog.Log(CurrentStep + ": "+ command.ToString());
 
-                command.Run(scenario,context);
+                command.Run(process,context);
                
 
             }
@@ -37,7 +39,7 @@ namespace gmtk2020_blazor.Models.Cpu
 
     public abstract class CpuCommand
     {
-        public abstract void Run(Scenario scenario, CpuCommandContext context);
+        public abstract void Run(Process scenario, CpuCommandContext context);
     }
 
     public class AssertCpuCommand : CpuCommand
@@ -51,7 +53,7 @@ namespace gmtk2020_blazor.Models.Cpu
             return $"ASSERT {CompareLeft} {CompareRight} PRINT";
         }
 
-        public override void Run(Scenario scenario, CpuCommandContext context)
+        public override void Run(Process scenario, CpuCommandContext context)
         {
             
 
@@ -59,9 +61,9 @@ namespace gmtk2020_blazor.Models.Cpu
             var valueRight = CompareRight.ReadFromTarget(scenario, context);
             var areEqual = string.Equals(valueLeft, valueRight);
             if (areEqual)
-                scenario.Printer.Append("ACCESS GRANTED|");
+                context.Scenario.Printer.Append("ACCESS GRANTED|");
             else
-                scenario.Printer.Append("ACCESS DENIED|");
+                context.Scenario.Printer.Append("ACCESS DENIED|");
         }
     }
 
@@ -93,8 +95,8 @@ namespace gmtk2020_blazor.Models.Cpu
 
     public abstract class Target
     {
-        public abstract void WriteToTarget(Scenario scenario, string input, CpuCommandContext context);
-        public abstract string ReadFromTarget(Scenario scenario, CpuCommandContext context);
+        public abstract void WriteToTarget(Process scenario, string input, CpuCommandContext context);
+        public abstract string ReadFromTarget(Process scenario, CpuCommandContext context);
 
         public static Target ResolveTarget(string from)
         {
@@ -121,12 +123,12 @@ namespace gmtk2020_blazor.Models.Cpu
     {
         public MemoryCoordinate Coordinate { get; set; }
 
-        public override string ReadFromTarget(Scenario scenario, CpuCommandContext context)
+        public override string ReadFromTarget(Process scenario, CpuCommandContext context)
         {
             string fromValue;
             if (Coordinate.DriveId != null)
             {
-                var drive = scenario.Disks[Coordinate.DriveId.Value];
+                var drive = context.Scenario.Disks[Coordinate.DriveId.Value];
                 fromValue = drive.Read(Coordinate);
             }
             else
@@ -138,14 +140,14 @@ namespace gmtk2020_blazor.Models.Cpu
             return fromValue;
         }
 
-        public override void WriteToTarget(Scenario scenario, string input, CpuCommandContext context)
+        public override void WriteToTarget(Process scenario, string input, CpuCommandContext context)
         {
             input = Pad4(input);
 
             AddressableRegion region;
             if (Coordinate.DriveId != null)
             {
-                region = scenario.Disks[Coordinate.DriveId.Value];
+                region = context.Scenario.Disks[Coordinate.DriveId.Value];
             }
             else
             {
@@ -207,7 +209,7 @@ namespace gmtk2020_blazor.Models.Cpu
     {
         public Target ReferenceLocation { get; set; }
 
-        public override string ReadFromTarget(Scenario scenario, CpuCommandContext context)
+        public override string ReadFromTarget(Process scenario, CpuCommandContext context)
         {
             var reference = ReferenceLocation.ReadFromTarget(scenario, context);
             Console.WriteLine("DeRef Raw: "+reference);
@@ -221,7 +223,7 @@ namespace gmtk2020_blazor.Models.Cpu
             return actualValue;
         }
 
-        public override void WriteToTarget(Scenario scenario, string input, CpuCommandContext context)
+        public override void WriteToTarget(Process scenario, string input, CpuCommandContext context)
         {
             var reference = ReferenceLocation.ReadFromTarget(scenario, context);
             var actualTarget = Target.ResolveTarget(reference);
@@ -247,7 +249,7 @@ namespace gmtk2020_blazor.Models.Cpu
     {
         public int Number { get; set; }
 
-        public override string ReadFromTarget(Scenario scenario, CpuCommandContext context)
+        public override string ReadFromTarget(Process scenario, CpuCommandContext context)
         {
             if (!context.Variables.ContainsKey(Number))
                 return string.Empty;
@@ -255,7 +257,7 @@ namespace gmtk2020_blazor.Models.Cpu
             return context.Variables[Number];
         }
 
-        public override void WriteToTarget(Scenario scenario, string input, CpuCommandContext context)
+        public override void WriteToTarget(Process scenario, string input, CpuCommandContext context)
         {
             if (Number > 9999)
                 Number = 0;
@@ -279,12 +281,12 @@ namespace gmtk2020_blazor.Models.Cpu
 
     public class KeyBoardTarget : Target
     {
-        public override string ReadFromTarget(Scenario scenario, CpuCommandContext context)
+        public override string ReadFromTarget(Process scenario, CpuCommandContext context)
         {
-            return scenario.KeyboardInput.Text ?? string.Empty;
+            return context.Scenario.KeyboardInput.Text ?? string.Empty;
         }
 
-        public override void WriteToTarget(Scenario scenario, string input, CpuCommandContext context)
+        public override void WriteToTarget(Process scenario, string input, CpuCommandContext context)
         {
             throw new NotImplementedException();
         }
@@ -307,14 +309,14 @@ namespace gmtk2020_blazor.Models.Cpu
             return "PRINT";
         }
 
-        public override string ReadFromTarget(Scenario scenario, CpuCommandContext context)
+        public override string ReadFromTarget(Process scenario, CpuCommandContext context)
         {
             throw new NotImplementedException();
         }
 
-        public override void WriteToTarget(Scenario scenario, string input, CpuCommandContext context)
+        public override void WriteToTarget(Process scenario, string input, CpuCommandContext context)
         {
-            scenario.Printer.Append(input);
+            context.Scenario.Printer.Append(input);
         }
 
         internal static PrinterTarget FromText(string from)
@@ -352,7 +354,7 @@ namespace gmtk2020_blazor.Models.Cpu
             return "PUT " + From.ToString() + " " + To.ToString();
         }
 
-        public override void Run(Scenario scenario, CpuCommandContext context)
+        public override void Run(Process scenario, CpuCommandContext context)
         {
             var value = From.ReadFromTarget(scenario,context);
             To.WriteToTarget(scenario,value,context);

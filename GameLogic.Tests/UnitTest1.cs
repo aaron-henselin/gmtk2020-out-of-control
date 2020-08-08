@@ -10,16 +10,14 @@ namespace GameLogic.Tests
         public void CanReadToMemoryExtent()
         {
             var scenario1 = new HelloWorldScenario();
-            scenario1.Memory = new AddressableRegion
+            var process = scenario1.Processes["Login.exe"];
+            process.Memory = new AddressableRegion
             {
                 SizeRows = 3,
                 SizeColumns = 10,
             };
-            scenario1.Memory.InitializeEmptyMemorySpace();
-            scenario1.Memory.SetMemoryToDefault();
-
-
-            var address = scenario1.Memory.Current[new MemoryCoordinate {X = scenario1.Memory.SizeColumns-1, Y = scenario1.Memory.SizeRows - 1 }];
+            process.Memory.InitializeEmptyMemorySpace();
+            process.Memory.SetMemoryToDefault();
 
         }
 
@@ -31,13 +29,14 @@ namespace GameLogic.Tests
 
             scenario.KeyboardInput.Text = "111111110:0A";
 
-            scenario.ManualProgram.RunNextStep(scenario,0, new CpuCommandContext());
-            scenario.ManualProgram.RunNextStep(scenario, 1, new CpuCommandContext());
+                var process = scenario.Processes["Login.exe"];
+                process.Source.RunNextStep(process,0, new CpuCommandContext{Scenario = scenario});
+                process.Source.RunNextStep(process, 1, new CpuCommandContext { Scenario = scenario });
 
             scenario.KeyboardInput.Text = "1111";
 
-            scenario.ManualProgram.RunNextStep(scenario, 0, new CpuCommandContext());
-            scenario.ManualProgram.RunNextStep(scenario, 1, new CpuCommandContext());
+            process.Source.RunNextStep(process, 0, new CpuCommandContext { Scenario = scenario });
+            process.Source.RunNextStep(process, 1, new CpuCommandContext { Scenario = scenario });
 
         }
 

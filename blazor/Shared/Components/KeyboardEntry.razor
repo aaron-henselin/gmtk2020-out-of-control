@@ -1,42 +1,52 @@
 ﻿@using GameLogic
 @using gmtk2020_blazor
+@using gmtk2020_blazor.Helpers
 
 @using Microsoft.AspNetCore.Components.Web
 
-<h2>User Input</h2>
-<div class="jumbotron mb-4">
-    @if (BlockInput)
-    {
-        <i>running</i>
-    }
-    else
-    {
-
-        <div class="form-group" >
-            <label for="prompt">@Prompt</label>
-            <input class="form-control my-2" id="prompt" @bind-value="Input" @bind-value:event="oninput" autocapitalize="off" autocorrect="off" autocomplete="off">
-            <div>
-                <i>@Instruction</i>
+@if (ActiveGame.ViewportProcess == null)
+{
+    <label>loading..</label>
+}
+else
+{
+    <h2>User Input</h2>
+    <div class="jumbotron mb-4">
+        @if (ActiveGame.ViewportProcessState != null)
+        {
+            <i>running</i>
+        }
+        else if (ActiveGame.ViewportProcess.IsBackgroundProcess)
+        {
+            <i>@ActiveGame.ViewportProcessName is a background process..</i>
+        }
+        else
+        {
+            <div class="form-group" >
+                <label for="prompt">@ActiveGame.ViewportProcess.Prompt</label>
+                <input class="form-control my-2" id="prompt" @bind-value="Input" @bind-value:event="oninput" autocapitalize="off" autocorrect="off" autocomplete="off">
+                <div>
+                    <i>@ActiveGame.ViewportProcess.Instruction</i>
+                </div>
             </div>
-        </div>
-        <button class="btn btn-primary btn-lg my-4" @onclick="@(() => LaunchAction(Input?.ToUpper()))">Run Program</button>
-    }
-    <hr class="my-4"/>
-</div>
+            <button class="btn btn-primary btn-lg my-4" @onclick="@(() => LaunchAction(Input?.ToUpper()))">Run Program</button>
+        }
+        <hr class="my-4"/>
+    </div>
+}
 
 
 
 
+
+@inject BlazorTimer BlazorTimer
 @code {
+
+
 
     [CascadingParameter]
     public IndexBase ActiveGame { get; set; }
 
-    [Parameter]
-    public string Prompt { get; set; }
-
-    [Parameter]
-    public string Instruction { get; set; }
 
     [Parameter]
     public bool BlockInput { get; set; }
@@ -52,15 +62,8 @@
 
         ActiveGame.RunningStatusChanged += (sender, args) =>
         {
-            Console.WriteLine("Running status is "+ActiveGame.ManualProgramRunning);
-            ToggleInput(ActiveGame.ManualProgramRunning);
+            this.StateHasChanged();
         };
-    }
-
-    public void ToggleInput(bool block)
-    {
-        BlockInput = block;
-        this.StateHasChanged();
     }
 
 

@@ -35,7 +35,7 @@
         {
             var driveNumber = i;
             var readonlyTitle = Scenario.Disks[i].ReadOnly ? "READONLY" : "READWRITE";
-            var showReadonlyView = !Scenario.Disks[i].IsAttachable || Scenario.Disks[i].IsAttached;
+            var showReadonlyView = !Scenario.Disks[i].IsExternalDrive || Scenario.Disks[i].IsMounted;
             <div class="window" @key="@driveNumber">
                 @if (showReadonlyView)
                 {
@@ -55,9 +55,9 @@
                 }
             </div>
 
-            @if (Scenario.Disks[driveNumber].IsAttachable)
+            @if (Scenario.Disks[driveNumber].IsExternalDrive)
             {
-                if (Scenario.Disks[driveNumber].IsAttached)
+                if (Scenario.Disks[driveNumber].IsMounted)
                 {
                     <button class="btn btn-secondary my-2" @onclick="@(() => Detach(driveNumber))">Detach Drive</button>
                 }
@@ -90,7 +90,7 @@
     {
         Console.WriteLine("Dettaching: " + i);
 
-        this.Scenario.Disks[i].IsAttached = false;
+        this.Scenario.Disks[i].IsMounted = false;
         this.StateHasChanged();
     }
 
@@ -100,7 +100,7 @@
 
         EditRegion.ApplyChanges();
 
-        this.Scenario.Disks[i].IsAttached = true;
+        this.Scenario.Disks[i].IsMounted = true;
         this.StateHasChanged();
     }
 

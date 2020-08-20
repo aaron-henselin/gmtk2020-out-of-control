@@ -1,0 +1,56 @@
+﻿@page "/Scenario6"
+@using GameLogic
+@using Microsoft.AspNetCore.Components.Web
+@inherits gmtk2020_blazor.IndexBase
+@using gmtk2020_blazor.Helpers
+@using Telerik;
+@using Telerik.Blazor.Components
+@using gmtk2020_blazor.Shared.Components
+@using Shared.Components
+
+<CascadingValue Value="@this">
+    <WinBanner />
+</CascadingValue>
+
+<div class="px-4">
+
+    <OperatingSystemDrawer Scenario="@Scenario"></OperatingSystemDrawer>
+
+    <div class="viewport">
+        <h3>Scenario 5</h3>
+        @{
+            var winCondition = "Success is achieved when 'ACCESS GRANTED' is a line in the output";
+        }
+        <p>
+            I'm telling ya kid, you're definitely not getting into this system without a password. @winCondition
+            <i>In this scenario, and in the scenarios to follow, you can crash the computer into oblivion. Refreshing your browser to recover is an expected part of the learning process.</i>
+        </p>
+
+        <CascadingValue Value="@this">
+            <TerminalViewport>
+                <KeyboardEntry LaunchAction="@(x => this.Launch(x))"></KeyboardEntry>
+            </TerminalViewport>
+        </CascadingValue>
+
+    
+        <PrinterOutputDisplay Printer="@Scenario.Printer" WinCondition="@winCondition"></PrinterOutputDisplay>
+        
+    </div>
+</div>
+
+
+
+@code {
+
+    @code {
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        this.Scenario = new SqlScenario1();
+    }
+
+    }
+
+}

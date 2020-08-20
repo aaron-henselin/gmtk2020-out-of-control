@@ -95,6 +95,7 @@ namespace gmtk2020_blazor
                     catch (Exception e)
                     {
                         exceptional = true;
+                        Console.Write(e);
                     }
                   
 

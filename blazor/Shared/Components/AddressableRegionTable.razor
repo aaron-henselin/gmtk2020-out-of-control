@@ -5,7 +5,7 @@
 
 @if (this.Region != null)
 {
-   if (this.Region.IsAttachable && !this.Region.IsAttached)
+   if (this.Region.IsExternalDrive && !this.Region.IsMounted)
     {
         <label class="mb-2">Volume Name</label>
         <input type="text"
@@ -46,7 +46,7 @@
             
                         <table>
                             <tr>
-                                @if (this.Region.IsAttachable && !this.Region.IsAttached)
+                                @if (this.Region.IsExternalDrive && !this.Region.IsMounted)
                                 {
 
                                     <td>

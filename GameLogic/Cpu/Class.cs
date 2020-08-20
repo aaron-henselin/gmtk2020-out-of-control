@@ -10,7 +10,7 @@ namespace gmtk2020_blazor.Models.Cpu
             
         public class CpuCommandContext
         {
-            public Dictionary<int,string> Variables { get; set; } = new Dictionary<int, string>();
+            public Dictionary<string,string> Variables { get; set; } = new Dictionary<string, string>();
 
             public Scenario Scenario { get; set; }
         }
@@ -35,6 +35,7 @@ namespace gmtk2020_blazor.Models.Cpu
                
 
             }
+
         }
 
     public abstract class CpuCommand
@@ -93,6 +94,8 @@ namespace gmtk2020_blazor.Models.Cpu
     //    }
     //}
 
+   
+
     public abstract class Target
     {
         public abstract void WriteToTarget(Process scenario, string input, CpuCommandContext context);
@@ -103,7 +106,7 @@ namespace gmtk2020_blazor.Models.Cpu
             if (from.StartsWith("M") || Char.IsDigit(from[0]))
                 return MediaTarget.FromText(from);
 
-            if (from.StartsWith("V"))
+            if (from.StartsWith("@"))
                 return VariableTarget.FromText(from);
 
             if (from.StartsWith("KB"))
@@ -115,7 +118,39 @@ namespace gmtk2020_blazor.Models.Cpu
             if (from.StartsWith("X"))
                 return DeRefTarget.FromText(from);
 
+            if (from.StartsWith("`"))
+                return LiteralTarget.FromText(from);
+
             throw new ArgumentException(from);
+        }
+    }
+
+    public class LiteralTarget : Target
+    {
+        public string Value { get; set; }
+
+        public override void WriteToTarget(Process scenario, string input, CpuCommandContext context)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override string ReadFromTarget(Process scenario, CpuCommandContext context)
+        {
+            return Value;
+        }
+
+        internal static LiteralTarget FromText(string from)
+        {
+            return new LiteralTarget
+            {
+                Value = from.Substring(1)
+            };
+
+        }
+
+        public override string ToString()
+        {
+            return "`" + Value;
         }
     }
 
@@ -205,6 +240,8 @@ namespace gmtk2020_blazor.Models.Cpu
         }
     }
 
+
+
     public class DeRefTarget : Target
     {
         public Target ReferenceLocation { get; set; }
@@ -247,7 +284,7 @@ namespace gmtk2020_blazor.Models.Cpu
 
     public class VariableTarget :Target
     {
-        public int Number { get; set; }
+        public string Number { get; set; }
 
         public override string ReadFromTarget(Process scenario, CpuCommandContext context)
         {
@@ -259,23 +296,21 @@ namespace gmtk2020_blazor.Models.Cpu
 
         public override void WriteToTarget(Process scenario, string input, CpuCommandContext context)
         {
-            if (Number > 9999)
-                Number = 0;
-
             context.Variables[Number] = input;
         }
 
         public override string ToString()
         {
-            return "V:" + Number;
+            return "@" + Number;
         }
 
         internal static VariableTarget FromText(string from)
         {
-            var variableTarget = new VariableTarget();
-            var parts = from.Split(new[] {':'});
-            variableTarget.Number = Convert.ToInt32(parts[1]);
-            return variableTarget;
+            //var variableTarget = new VariableTarget();
+            //var parts = from.Split(new[] {':'});
+            //variableTarget.Number = parts[1];
+            //return variableTarget;
+            return new VariableTarget {Number = from.Substring(1)};
         }
     }
 
@@ -325,24 +360,100 @@ namespace gmtk2020_blazor.Models.Cpu
         }
     }
 
-    //public class KeyboardCpuCommand : CpuCommand
-    //{
-    //    public Target To { get; set; }
+    public class ExecCpuCommand : CpuCommand
+    {
+        public SearchConstraints SearchConstraints { get; set; }
 
-    //    public override string ToString()
-    //    {
-    //        return "PUT KB " + To.ToString();
-    //    }
+        public override string ToString()
+        {
+            return $"EXEC {SearchConstraints}";
+        }
 
+        public override void Run(Process scenario, CpuCommandContext context)
+        {
+            var disks = context.Scenario.FindDisks(SearchConstraints);
 
-    //    public override void Run(Scenario scenario)
-    //    {
-    //        Console.WriteLine(scenario.KeyboardInput.Text);
-    //        To.WriteToTarget(scenario,scenario.KeyboardInput.Text);
+            var coordList =
+            disks.SelectMany(x => x.FilterCoordinates(SearchConstraints))
+                .OrderBy(x => x.DriveId)
+                .ThenBy(x => x.Y)
+                .ThenBy(x => x.X);
 
-    //    }
-    //}
+            string fullText = string.Empty;
+            foreach (var coord in coordList)
+            {
+                var drive = context.Scenario.Disks[coord.DriveId.Value];
+                var readValue = drive.Read(coord);
+                fullText += readValue;
+            }
 
+            var dynamicQuery = QueryCpuCommand.FromText(fullText);
+            scenario.CpuLog.Log("~:" + dynamicQuery.ToString());
+            dynamicQuery.Run(scenario,context);
+        }
+
+        public static ExecCpuCommand FromText(string text)
+        {
+            var parts = text.Split(new[] {" "}, StringSplitOptions.RemoveEmptyEntries);
+
+            var constraints = GameLogic.SearchConstraints.ResolveTarget(parts[1]);
+
+            return new ExecCpuCommand
+            {
+                SearchConstraints = constraints
+            };
+
+        }
+    }
+
+    public class QueryCpuCommand : CpuCommand
+    {
+        public SearchConstraints SearchConstraints { get; set; }
+        public Target For { get; set; }
+
+        public const string OutputVariableName = "@Index";
+
+        public override string ToString()
+        {
+            return $"QUERY {SearchConstraints} FOR {For}";
+        }
+
+        public override void Run(Process scenario, CpuCommandContext context)
+        {
+            var searchValue = For.ReadFromTarget(scenario, context);
+
+            var disks = context.Scenario.FindDisks(SearchConstraints);
+            foreach (var disk in disks)
+            {
+                var found = disk.Find(SearchConstraints, searchValue);
+                if (found == null)
+                    continue;
+
+                context.Variables["Index"] = found.Value.ToString();
+                return;
+            }
+
+            
+        }
+
+        public static QueryCpuCommand FromText(string text)
+        {
+            var forAt = text.LastIndexOf("FOR");
+            var constraintsRaw = text.Substring(6, forAt - 6).Trim();
+            var forTargetRaw = text.Substring(forAt + 4).Trim();
+
+            var constraints = GameLogic.SearchConstraints.ResolveTarget(constraintsRaw);
+            var forResult = Target.ResolveTarget(forTargetRaw);
+
+            return new QueryCpuCommand
+            {
+                For = forResult,
+                SearchConstraints = constraints
+            };
+            
+        }
+
+    }
 
     public class ReadCpuCommand :CpuCommand
     {

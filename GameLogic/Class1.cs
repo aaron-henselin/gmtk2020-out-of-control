@@ -30,44 +30,53 @@ namespace GameLogic
 
         public static MemoryCoordinate FromText(string from)
         {
-            from = from.Replace(",", "");
-            from = from.Replace(" ", "");
-            from = from.Replace(":", "");
-
-            
-            //var parts = from.Split(new []{':',',',' '},StringSplitOptions.RemoveEmptyEntries);
-
-            var yInt = 0;
-            var yChar = from[2];
-            if (char.IsLetter(yChar))
+            try
             {
-                yInt = (int)yChar - 'A';
-            }
-            else
-            {
-                yInt = Convert.ToInt32(yChar.ToString());
-            }
+                from = from.Replace(",", "");
+                from = from.Replace(" ", "");
+                from = from.Replace(":", "");
 
-            var xInt = 0;
-            xInt = Convert.ToInt32(from[1].ToString());
 
-            if (from[0] == 'M')
-            {
-                return new MemoryCoordinate {X = xInt , Y =yInt};
-            }
-            else
-            {
-                var driveInt = Convert.ToInt32(from[0].ToString());
+                //var parts = from.Split(new []{':',',',' '},StringSplitOptions.RemoveEmptyEntries);
 
-                return new MemoryCoordinate
+                var yInt = 0;
+                var yChar = from[2];
+                if (char.IsLetter(yChar))
                 {
-                    X = xInt, 
-                    Y = yInt,
-                    DriveId = driveInt
-                };
-            }
+                    yInt = (int)yChar - 'A';
+                }
+                else
+                {
+                    yInt = Convert.ToInt32(yChar.ToString());
+                }
 
-            throw new ArgumentException();
+                var xInt = 0;
+                xInt = Convert.ToInt32(from[1].ToString());
+
+                if (from[0] == 'M')
+                {
+                    return new MemoryCoordinate { X = xInt, Y = yInt };
+                }
+                else
+                {
+                    var driveInt = Convert.ToInt32(from[0].ToString());
+
+                    return new MemoryCoordinate
+                    {
+                        X = xInt,
+                        Y = yInt,
+                        DriveId = driveInt
+                    };
+                }
+
+                throw new ArgumentException();
+            }
+            catch (Exception e)
+            {
+
+                throw new ArgumentException("Unable to parse memorycoordinate " + from,e);
+            }
+            
         }
     }
 
@@ -89,8 +98,8 @@ namespace GameLogic
 
     public class AddressableRegion
     {
-        public bool IsAttachable { get; set; }
-        public bool IsAttached { get; set; }
+        public bool IsExternalDrive { get; set; }
+        public bool IsMounted { get; set; }
 
         public event EventHandler<AddressRegionEventArgs> RegionUpdated;
         public int? DriveId { get; set; }
@@ -209,6 +218,83 @@ namespace GameLogic
             }
             RegionUpdated?.Invoke(this, new AddressRegionEventArgs());
         }
+
+
+        public IEnumerable<MemoryCoordinate> FilterCoordinates(SearchConstraints constraints)
+        {
+            var allCoordinates = this.AllCoordinates.ToList();
+            foreach (var coordinate in allCoordinates)
+            {
+                var matchCol = !constraints.ColConstraint.HasValue || constraints.ColConstraint.Value == coordinate.X;
+                var matchRow= !constraints.RowConstraint.HasValue || constraints.RowConstraint.Value == coordinate.Y;
+                if (!matchRow || !matchCol)
+                    continue;
+
+                yield return coordinate;
+            }
+        }
+
+        public MemoryCoordinate? Find(SearchConstraints constraints, string value)
+        {
+            var coordinates = FilterCoordinates(constraints);
+            foreach (var coordinate in coordinates)
+            {
+                var read = Read(coordinate);
+                var isContained = read.Contains(value);
+                if (isContained)
+                    return coordinate;
+            }
+
+            return null;
+        }
+    }
+
+    public class SearchConstraints
+    {
+        public int? DriveConstraint { get; set; }
+        public int? RowConstraint { get; set; }
+        public int? ColConstraint { get; set; }
+
+        public static SearchConstraints ResolveTarget(string from)
+        {
+            var expression = new SearchConstraints();
+
+            from = from.Replace(",", "");
+            from = from.Replace(" ", "");
+            from = from.Replace(":", "");
+
+            var driveConstraintRaw = from[0];
+            if ('*' != driveConstraintRaw)
+                expression.DriveConstraint = Int32.Parse(driveConstraintRaw.ToString());
+
+            var colConstraintRaw = from[1];
+            if ('*' != colConstraintRaw)
+                expression.ColConstraint = Int32.Parse(colConstraintRaw.ToString());
+
+            var rowConstraintRaw = from[2];
+            if ('*' != rowConstraintRaw)
+            {
+                int yInt;
+                if (char.IsLetter(rowConstraintRaw))
+                {
+                    yInt = (int)rowConstraintRaw - 'A';
+                }
+                else
+                {
+                    yInt = Convert.ToInt32(rowConstraintRaw.ToString());
+                }
+
+                expression.RowConstraint = yInt;
+            }
+
+            return expression;
+        }
+
+        public override string ToString()
+        {
+            return (DriveConstraint?.ToString() ?? "*") + ":" + (RowConstraint?.ToString() ?? "*") +
+                   (ColConstraint?.ToString() ?? "*");
+        }
     }
 
     public class CpuLog
@@ -246,6 +332,32 @@ namespace GameLogic
 
     public abstract class Scenario
     {
+        public IReadOnlyCollection<AddressableRegion> FindDisks(SearchConstraints SearchConstraints)
+        {
+            List<AddressableRegion> disks = new List<AddressableRegion>();
+            for (int i = 0; i < Disks.Count; i++)
+            {
+                var invalidConstraint = SearchConstraints.DriveConstraint != null && SearchConstraints.DriveConstraint != i;
+                if (invalidConstraint)
+                    continue;
+
+                var region = Disks[i];
+                if (region.IsExternalDrive && !region.IsMounted)
+                    continue;
+
+                disks.Add(region);
+
+                //var found = region.Find(SearchConstraints, searchValue);
+                //if (found == null)
+                //    continue;
+
+                //context.Variables["Index"] = found.Value.ToString();
+                //return;
+            }
+
+            return disks;
+        }
+
         public string NextScenario { get; set; }
         public abstract void Initialize();
         public abstract bool IsAtWinCondition();
@@ -418,6 +530,507 @@ namespace GameLogic
         }
     }
 
+    public class SqlScenario1 : Scenario
+    {
+        public override void Initialize()
+        {
+            var Memory = new AddressableRegion
+            {
+                SizeRows = 3,
+                SizeColumns = 4,
+            };
+            Memory.InitializeEmptyMemorySpace();
+
+
+
+            #region disk
+            var disk0 = new AddressableRegion();
+            disk0.VolumeName = "Keystore";
+            disk0.ReadOnly = true;
+            disk0.DriveId = 0;
+            disk0.SizeRows = 1;
+            disk0.SizeColumns = 4;
+            disk0.InitializeEmptyMemorySpace();
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 0 }, "0451");
+            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 0, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 0, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 2, Y = 0, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 3, Y = 0, DriveId = 0 }] = true;
+            disk0.SetMemoryToDefault();
+            Disks.Add(disk0);
+            #endregion
+
+            #region disk
+
+            var disk1 = new AddressableRegion
+            {
+                VolumeName = "SWAP_DRIVE",
+                ReadOnly = true,
+                DriveId = 1,
+                SizeRows = 1,
+                SizeColumns = 4,
+                IsExternalDrive = true,
+                IsMounted = false
+            };
+            disk1.InitializeEmptyMemorySpace();
+            disk1.SetDefault(new MemoryCoordinate { DriveId = 1, X = 0, Y = 0 }, "YOUR");
+            disk1.SetDefault(new MemoryCoordinate { DriveId = 1, X = 1, Y = 0 }, "DATA");
+            disk1.SetDefault(new MemoryCoordinate { DriveId = 1, X = 2, Y = 0 }, "HERE");
+            disk1.SetMemoryToDefault();
+            Disks.Add(disk1);
+
+            #endregion
+
+            Memory.SetMemoryToDefault();
+
+            //
+            // 
+
+
+            var ManualProgram = new CpuProgram();
+            ManualProgram.AllCommands = new List<CpuCommand>();
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KBD M:0A"));
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:0A @SEARCH_TEXT"));
+            ManualProgram.AllCommands.Add(QueryCpuCommand.FromText("QUERY *:** FOR @SEARCH_TEXT"));
+
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT @Index M:0B"));
+            ManualProgram.AllCommands.Add(new AssertCpuCommand
+            {
+                CompareLeft = MediaTarget.FromText("M:0A"),
+                CompareRight = DeRefTarget.FromText("XM:0B"),
+            });
+
+            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KB M:2C"));
+
+            //ManualProgram.AllCommands.Add(new AssertCpuCommand
+            //{
+            //    CompareLeft = MediaTarget.FromText("M:2C"),
+            //    CompareRight = MediaTarget.FromText("0:0,0")
+            //});
+
+            AddProcess("Login.exe", new Process
+            {
+                Memory = Memory,
+                Source = ManualProgram,
+                Prompt = "Please enter your password",
+                Instruction = "^ Can't remember your password? Try 'Password'."
+
+            });
+
+            this.Hints.Add(new Hint
+            {
+                Title = "What am I looking at?",
+                Body = "In this scenario, some memory addresses are prefixed with X. This indicates that the value in memory at that location should be treated as a MEMORY ADDRESS to go fetch the value from."
+            });
+
+            this.Hints.Add(new Hint
+            {
+                Title = "The security is too tight! There's no way for me to get in and break this thing.",
+                Body = "Yea, it'd be better if you just had the password."
+            });
+
+            this.Hints.Add(new Hint
+            {
+                Title = "The password's in encrypted memory, I can't see it.",
+                Body = "Find a way to get the password OUT of encrypted memory."
+            });
+        }
+
+        public override bool IsAtWinCondition()
+        {
+            var winningLines = Printer.TextLines
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .FirstOrDefault(x => "ACCESS GRANTED" == x);
+
+            if (winningLines != null)
+                Console.WriteLine("Winning line: " + winningLines);
+            return winningLines != null;
+        }
+    }
+    public class SqlScenario0 : Scenario
+    {
+        public override void Initialize()
+        {
+            var Memory = new AddressableRegion
+            {
+                SizeRows = 3,
+                SizeColumns = 4,
+            };
+            Memory.InitializeEmptyMemorySpace();
+
+
+
+            #region disk
+            var disk0 = new AddressableRegion();
+            disk0.VolumeName = "Keystore";
+            disk0.ReadOnly = true;
+            disk0.DriveId = 0;
+            disk0.SizeRows = 4;
+            disk0.SizeColumns = 4;
+            disk0.InitializeEmptyMemorySpace();
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 0 }, "~451");
+            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 0, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 0, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 2, Y = 0, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 3, Y = 0, DriveId = 0 }] = true;
+
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 0 }, "~451");
+            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 1, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 1, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 2, Y = 1, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 3, Y = 1, DriveId = 0 }] = true;
+
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 0 }, "~451");
+            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 2, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 2, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 2, Y = 2, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 3, Y = 2, DriveId = 0 }] = true;
+
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 3 }, "/*YOU");
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 1, Y = 3 }, "R KE");
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 2, Y = 3 }, "Y HE");
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 3, Y = 3 }, "RE*/");
+
+            disk0.SetMemoryToDefault();
+            Disks.Add(disk0);
+            #endregion
+
+
+            Memory.SetMemoryToDefault();
+
+            var ManualProgram = new CpuProgram();
+            ManualProgram.AllCommands = new List<CpuCommand>();
+
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KBD M:0A"));
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:0A @SEARCH_TEXT"));
+            ManualProgram.AllCommands.Add(QueryCpuCommand.FromText("QUERY 0:3* FOR @SEARCH_TEXT"));
+
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT @Index M:0B"));
+            ManualProgram.AllCommands.Add(new AssertCpuCommand
+            {
+                CompareLeft = MediaTarget.FromText("M:0A"),
+                CompareRight = DeRefTarget.FromText("XM:0B"),
+            });
+
+
+
+            AddProcess("Login.exe", new Process
+            {
+                Memory = Memory,
+                Source = ManualProgram,
+                Prompt = "Please enter your password",
+                Instruction = "^ Can't remember your password? Try 'Password'."
+
+            });
+
+            this.Hints.Add(new Hint
+            {
+                Title = "What am I looking at?",
+                Body = "In this scenario, some memory addresses are prefixed with X. This indicates that the value in memory at that location should be treated as a MEMORY ADDRESS to go fetch the value from."
+            });
+
+            this.Hints.Add(new Hint
+            {
+                Title = "The security is too tight! There's no way for me to get in and break this thing.",
+                Body = "Yea, it'd be better if you just had the password."
+            });
+
+            this.Hints.Add(new Hint
+            {
+                Title = "The password's in encrypted memory, I can't see it.",
+                Body = "Find a way to get the password OUT of encrypted memory."
+            });
+        }
+
+        public override bool IsAtWinCondition()
+        {
+            var winningLines = Printer.TextLines
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .FirstOrDefault(x => "ACCESS GRANTED" == x);
+
+            if (winningLines != null)
+                Console.WriteLine("Winning line: " + winningLines);
+            return winningLines != null;
+        }
+    }
+
+    public class SqlScenario2 : Scenario
+    {
+        public override void Initialize()
+        {
+            var Memory = new AddressableRegion
+            {
+                SizeRows = 2,
+                SizeColumns = 4,
+            };
+            Memory.InitializeEmptyMemorySpace();
+
+
+
+            #region disk
+            var disk0 = new AddressableRegion();
+            disk0.VolumeName = "Keystore";
+            disk0.ReadOnly = true;
+            disk0.DriveId = 0;
+            disk0.SizeRows = 3;
+            disk0.SizeColumns = 4;
+            disk0.InitializeEmptyMemorySpace();
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 0 }, "~451");
+            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 0, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 0, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 2, Y = 0, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 3, Y = 0, DriveId = 0 }] = true;
+
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 0 }, "~451");
+            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 1, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 1, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 2, Y = 1, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 3, Y = 1, DriveId = 0 }] = true;
+
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 0 }, "~451");
+            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 2, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 2, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 2, Y = 2, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 3, Y = 2, DriveId = 0 }] = true;
+
+            disk0.SetMemoryToDefault();
+            Disks.Add(disk0);
+            #endregion
+
+
+            var disk1 = new AddressableRegion
+            {
+                VolumeName = "QUERY_BUILDER",
+                ReadOnly = false,
+                DriveId = 1,
+                SizeRows = 2,
+                SizeColumns = 4
+            };
+            disk1.InitializeEmptyMemorySpace();
+            disk1.SetDefault(MemoryCoordinate.FromText("1:0A"),"QUER" );
+            disk1.SetDefault(MemoryCoordinate.FromText("1:1A"), "Y ");
+            disk1.SetDefault(MemoryCoordinate.FromText("1:2A"), "0:3*");
+            disk1.SetDefault(MemoryCoordinate.FromText("1:3A"), " FOR");
+            disk1.SetDefault(MemoryCoordinate.FromText("1:0B"), "   `");
+            
+            disk1.SetMemoryToDefault();
+            Disks.Add(disk1);
+
+
+
+            Memory.SetMemoryToDefault();
+
+            var ManualProgram = new CpuProgram();
+            ManualProgram.AllCommands = new List<CpuCommand>();
+
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KBD 1:1B"));
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT `QUER 1:0A "));
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT `Y 1:1A  "));
+
+            ManualProgram.AllCommands.Add(ExecCpuCommand.FromText("EXEC 1:**"));
+
+            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:0A @SEARCH_TEXT"));
+            //ManualProgram.AllCommands.Add(QueryCpuCommand.FromText("QUERY 0:3* FOR @SEARCH_TEXT"));
+
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT @Index M:0B"));
+            ManualProgram.AllCommands.Add(new AssertCpuCommand
+            {
+                CompareLeft = MediaTarget.FromText("M:0A"),
+                CompareRight = DeRefTarget.FromText("XM:0B"),
+            });
+
+
+
+            AddProcess("Login.exe", new Process
+            {
+                Memory = Memory,
+                Source = ManualProgram,
+                Prompt = "Please enter your password",
+                Instruction = "^ Can't remember your password? Try 'Password'."
+
+            });
+
+            this.Hints.Add(new Hint
+            {
+                Title = "What am I looking at?",
+                Body = "In this scenario, some memory addresses are prefixed with X. This indicates that the value in memory at that location should be treated as a MEMORY ADDRESS to go fetch the value from."
+            });
+
+            this.Hints.Add(new Hint
+            {
+                Title = "The security is too tight! There's no way for me to get in and break this thing.",
+                Body = "Yea, it'd be better if you just had the password."
+            });
+
+            this.Hints.Add(new Hint
+            {
+                Title = "The password's in encrypted memory, I can't see it.",
+                Body = "Find a way to get the password OUT of encrypted memory."
+            });
+        }
+
+        public override bool IsAtWinCondition()
+        {
+            var winningLines = Printer.TextLines
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .FirstOrDefault(x => "ACCESS GRANTED" == x);
+
+            if (winningLines != null)
+                Console.WriteLine("Winning line: " + winningLines);
+            return winningLines != null;
+        }
+    }
+
+    public class SqlForUsingMemoryAddress : Scenario
+    {
+        public override void Initialize()
+        {
+            var Memory = new AddressableRegion
+            {
+                SizeRows = 2,
+                SizeColumns = 4,
+            };
+            Memory.InitializeEmptyMemorySpace();
+
+
+
+            #region disk
+            var disk0 = new AddressableRegion();
+            disk0.VolumeName = "Keystore";
+            disk0.ReadOnly = true;
+            disk0.DriveId = 0;
+            disk0.SizeRows = 3;
+            disk0.SizeColumns = 4;
+            disk0.InitializeEmptyMemorySpace();
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 0 }, "~451");
+            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 0, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 0, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 2, Y = 0, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 3, Y = 0, DriveId = 0 }] = true;
+
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 0 }, "~451");
+            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 1, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 1, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 2, Y = 1, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 3, Y = 1, DriveId = 0 }] = true;
+
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 0 }, "~451");
+            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 2, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 2, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 2, Y = 2, DriveId = 0 }] = true;
+            disk0.EncryptionState[new MemoryCoordinate { X = 3, Y = 2, DriveId = 0 }] = true;
+
+            disk0.SetMemoryToDefault();
+            Disks.Add(disk0);
+            #endregion
+
+
+            var disk1 = new AddressableRegion
+            {
+                VolumeName = "QUERY_BUILDER",
+                ReadOnly = false,
+                DriveId = 1,
+                SizeRows = 2,
+                SizeColumns = 4
+            };
+            disk1.InitializeEmptyMemorySpace();
+            disk1.SetDefault(MemoryCoordinate.FromText("1:0A"), "QUER");
+            disk1.SetDefault(MemoryCoordinate.FromText("1:1A"), "Y ");
+            disk1.SetDefault(MemoryCoordinate.FromText("1:2A"), "0:3*");
+            disk1.SetDefault(MemoryCoordinate.FromText("1:3A"), " FOR");
+            disk1.SetDefault(MemoryCoordinate.FromText("1:0B"), "   `");
+
+            disk1.SetMemoryToDefault();
+            Disks.Add(disk1);
+
+
+            var disk2 = new AddressableRegion
+            {
+                VolumeName = "QUERY_TEMPLATE",
+                ReadOnly = false,
+                DriveId = 2,
+                SizeRows = 2,
+                SizeColumns = 4
+            };
+            disk2.InitializeEmptyMemorySpace();
+            disk2.SetDefault(MemoryCoordinate.FromText("2:0A"), "QUER");
+            disk2.SetDefault(MemoryCoordinate.FromText("2:1A"), "Y ");
+            disk2.SetDefault(MemoryCoordinate.FromText("2:2A"), "0:3*");
+            disk2.SetDefault(MemoryCoordinate.FromText("2:3A"), " FOR");
+            disk2.SetDefault(MemoryCoordinate.FromText("2:0B"), "   `");
+
+            disk2.SetMemoryToDefault();
+            Disks.Add(disk2);
+
+            Memory.SetMemoryToDefault();
+
+            var ManualProgram = new CpuProgram();
+            ManualProgram.AllCommands = new List<CpuCommand>();
+
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KBD 1:1B"));
+
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT 2:0A 1:0A"));
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT 2:1A 1:1A"));
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT 2:2A 1:2A"));
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT 2:3A 1:3A"));
+            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT 2:0B 1:0B"));
+
+            ManualProgram.AllCommands.Add(ExecCpuCommand.FromText("EXEC 1:**"));
+
+            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:0A @SEARCH_TEXT"));
+            //ManualProgram.AllCommands.Add(QueryCpuCommand.FromText("QUERY 0:3* FOR @SEARCH_TEXT"));
+
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT @Index M:0B"));
+            ManualProgram.AllCommands.Add(new AssertCpuCommand
+            {
+                CompareLeft = MediaTarget.FromText("M:0A"),
+                CompareRight = DeRefTarget.FromText("XM:0B"),
+            });
+
+
+
+            AddProcess("Login.exe", new Process
+            {
+                Memory = Memory,
+                Source = ManualProgram,
+                Prompt = "Please enter your password",
+                Instruction = "^ Can't remember your password? Try 'Password'."
+
+            });
+
+            this.Hints.Add(new Hint
+            {
+                Title = "What am I looking at?",
+                Body = "In this scenario, some memory addresses are prefixed with X. This indicates that the value in memory at that location should be treated as a MEMORY ADDRESS to go fetch the value from."
+            });
+
+            this.Hints.Add(new Hint
+            {
+                Title = "The security is too tight! There's no way for me to get in and break this thing.",
+                Body = "Yea, it'd be better if you just had the password."
+            });
+
+            this.Hints.Add(new Hint
+            {
+                Title = "The password's in encrypted memory, I can't see it.",
+                Body = "Find a way to get the password OUT of encrypted memory."
+            });
+        }
+
+        public override bool IsAtWinCondition()
+        {
+            var winningLines = Printer.TextLines
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .FirstOrDefault(x => "ACCESS GRANTED" == x);
+
+            if (winningLines != null)
+                Console.WriteLine("Winning line: " + winningLines);
+            return winningLines != null;
+        }
+    }
+
+
+
     public class DereferencingScenario : Scenario
     {
         public override void Initialize()
@@ -465,7 +1078,7 @@ namespace GameLogic
             disk2.DriveId = 1;
             disk2.SizeRows = 1;
             disk2.SizeColumns = 4;
-            disk2.IsAttachable = true;
+            disk2.IsExternalDrive = true;
             disk2.InitializeEmptyMemorySpace();
             disk2.SetDefault(new MemoryCoordinate { DriveId = 1, X = 0, Y = 0 }, "PLEA");
             disk2.SetDefault(new MemoryCoordinate { DriveId = 1, X = 1, Y = 0 }, "SE W");

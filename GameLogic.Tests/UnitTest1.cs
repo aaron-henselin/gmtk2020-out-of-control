@@ -7,6 +7,21 @@ namespace GameLogic.Tests
     public class UnitTest1
     {
         [TestMethod]
+        public void Sc6()
+        {
+            var scenario1 = new SqlScenario2();
+            scenario1.Initialize();
+            scenario1.KeyboardInput = new KeyboardInput {Text = "test"};
+            var loginExe = scenario1.Processes["Login.exe"];
+            var context = new CpuCommandContext {Scenario = scenario1};
+            loginExe.Source.RunNextStep(loginExe,0, context);
+            loginExe.Source.RunNextStep(loginExe, 1, context);
+            loginExe.Source.RunNextStep(loginExe, 2, context);
+            loginExe.Source.RunNextStep(loginExe, 3, context);
+
+        }
+
+        [TestMethod]
         public void CanReadToMemoryExtent()
         {
             var scenario1 = new HelloWorldScenario();

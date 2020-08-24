@@ -9,7 +9,7 @@ namespace GameLogic.Tests
         [TestMethod]
         public void Sc6()
         {
-            var scenario1 = new SqlScenario2();
+            var scenario1 = new SqlReplaceEntireQuery();
             scenario1.Initialize();
             scenario1.KeyboardInput = new KeyboardInput {Text = "test"};
             var loginExe = scenario1.Processes["Login.exe"];

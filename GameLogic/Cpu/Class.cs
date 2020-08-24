@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
+using AddressableRegion = GameLogic.AddressableRegion;
 
 namespace gmtk2020_blazor.Models.Cpu
 {
@@ -357,6 +358,40 @@ namespace gmtk2020_blazor.Models.Cpu
         internal static PrinterTarget FromText(string from)
         {
             return new PrinterTarget();
+        }
+    }
+
+    public class SeekCpuCommand : CpuCommand
+    {
+        public Target Amount { get; set; }
+
+        public Target Target { get; set; }
+
+        public override string ToString()
+        {
+            return $"SEEK {Target} {Amount}";
+        }
+
+        public override void Run(Process scenario, CpuCommandContext context)
+        {
+            var advanceAmountRaw = Amount.ReadFromTarget(scenario, context);
+            var advanceAmount = Int32.Parse(advanceAmountRaw);
+
+            var currentValue = Target.ReadFromTarget(scenario, context);
+            var currentMediaTarget = MediaTarget.FromText(currentValue);
+
+            AddressableRegion region;
+            if (currentMediaTarget.Coordinate.DriveId == null)
+                region = scenario.Memory;
+            else
+                region = context.Scenario.Disks[currentMediaTarget.Coordinate.DriveId.Value];
+
+            var current = currentMediaTarget.Coordinate;
+            for (int i = 0; i < advanceAmount; i++)
+                 current = region.NextAddress(current);
+            
+        
+            Target.WriteToTarget(scenario, current.ToString(), context);
         }
     }
 

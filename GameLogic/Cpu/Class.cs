@@ -11,7 +11,11 @@ namespace gmtk2020_blazor.Models.Cpu
             
         public class CpuCommandContext
         {
-            public Dictionary<string,string> Variables { get; set; } = new Dictionary<string, string>();
+            public Dictionary<string, string> Variables { get; set; } = new Dictionary<string, string>
+            {
+                ["StartLiteral"] = "   `"
+
+            };
 
             public Scenario Scenario { get; set; }
         }
@@ -44,28 +48,77 @@ namespace gmtk2020_blazor.Models.Cpu
         public abstract void Run(Process scenario, CpuCommandContext context);
     }
 
-    public class AssertCpuCommand : CpuCommand
+    public class Assertion
     {
         public Target CompareLeft { get; set; }
-
         public Target CompareRight { get; set; }
 
         public override string ToString()
         {
-            return $"ASSERT {CompareLeft} {CompareRight} PRINT";
+            return CompareLeft + "=" + CompareRight;
+        }
+    }
+
+    public class AssertCpuCommand : CpuCommand
+    {
+        public AssertCpuCommand()
+        {
+        }
+
+        public AssertCpuCommand(Target left, Target right)
+        {
+            Assertions = new List<Assertion>{new Assertion{CompareLeft = left,CompareRight = right}};
+        }
+
+        public AssertCpuCommand(string left, string right) :this(Target.ResolveTarget(left),Target.ResolveTarget(right))
+        {
+           
+        }
+
+
+        public List<Assertion> Assertions { get; set; } = new List<Assertion>();
+
+
+        public override string ToString()
+        {
+            var builder = "TEST";
+            for (int i = 0; i < Assertions.Count; i++)
+            {
+                if (i != 0)
+                    builder += ",";
+
+                builder += Assertions[i].ToString();
+            }
+            foreach (var assertion in Assertions)
+                builder += assertion.ToString();
+
+            return builder;
         }
 
         public override void Run(Process scenario, CpuCommandContext context)
         {
-            
+            var results =
+                Assertions.Select(assert =>
+                {
+                    var valueLeft = assert.CompareLeft.ReadFromTarget(scenario, context);
+                    var valueRight = assert.CompareRight.ReadFromTarget(scenario, context);
+                    var match = string.Equals(valueLeft, valueRight);
 
-            var valueLeft = CompareLeft.ReadFromTarget(scenario,context);
-            var valueRight = CompareRight.ReadFromTarget(scenario, context);
-            var areEqual = string.Equals(valueLeft, valueRight);
-            if (areEqual)
+                    Console.Write($"TEST {assert.CompareLeft}:{valueLeft} = {assert.CompareRight}:{valueRight} {match}");
+
+                    return match;
+                });
+            
+            if (results.All(x => x))
+            {
+                Console.Write($"TEST PASSED.");
                 context.Scenario.Printer.Append("ACCESS GRANTED|");
+            }
             else
+            {
+                Console.Write($"TEST FAILED.");
                 context.Scenario.Printer.Append("ACCESS DENIED|");
+            }
         }
     }
 
@@ -422,6 +475,7 @@ namespace gmtk2020_blazor.Models.Cpu
                 fullText += readValue;
             }
 
+
             var dynamicQuery = QueryCpuCommand.FromText(fullText);
             scenario.CpuLog.Log("~:" + dynamicQuery.ToString());
             dynamicQuery.Run(scenario,context);
@@ -441,10 +495,48 @@ namespace gmtk2020_blazor.Models.Cpu
         }
     }
 
+    public class QueryFor
+    {
+        public QueryFor()
+        {
+        }
+
+        public QueryFor(string clause)
+        {
+
+            List<Target> parsedTargets = new List<Target>();
+            var fors = clause.Split(new[] { "/" }, StringSplitOptions.None);
+            foreach (var f in fors)
+            {
+                var forResult = Target.ResolveTarget(f);
+                For.Add(forResult);
+            }
+        }
+
+        public List<Target> For { get; set; } = new List<Target>();
+
+        public override string ToString()
+        {
+            return $"{string.Join(" / ", For)}";
+        }
+
+        public IReadOnlyCollection<string> GetSearchValues(Process scenario, CpuCommandContext context)
+        {
+            List<string> searchValues = new List<string>();
+            foreach (var f in For)
+            {
+                searchValues.Add(f.ReadFromTarget(scenario, context));
+            }
+
+            return searchValues;
+        }
+    }
+
     public class QueryCpuCommand : CpuCommand
     {
         public SearchConstraints SearchConstraints { get; set; }
-        public Target For { get; set; }
+    
+        public QueryFor For { get; set; }
 
         public const string OutputVariableName = "@Index";
 
@@ -455,12 +547,14 @@ namespace gmtk2020_blazor.Models.Cpu
 
         public override void Run(Process scenario, CpuCommandContext context)
         {
-            var searchValue = For.ReadFromTarget(scenario, context);
+            var resolvedForExpression = For.GetSearchValues(scenario,context);
+            
+
 
             var disks = context.Scenario.FindDisks(SearchConstraints);
             foreach (var disk in disks)
             {
-                var found = disk.Find(SearchConstraints, searchValue);
+                var found = disk.Find(SearchConstraints, resolvedForExpression);
                 if (found == null)
                     continue;
 
@@ -473,21 +567,65 @@ namespace gmtk2020_blazor.Models.Cpu
 
         public static QueryCpuCommand FromText(string text)
         {
-            var forAt = text.LastIndexOf("FOR");
+            var forAt = text.IndexOf("FOR");
             var constraintsRaw = text.Substring(6, forAt - 6).Trim();
-            var forTargetRaw = text.Substring(forAt + 4).Trim();
+            var forTargetsRaw = text.Substring(forAt + 4).Trim();
 
             var constraints = GameLogic.SearchConstraints.ResolveTarget(constraintsRaw);
-            var forResult = Target.ResolveTarget(forTargetRaw);
-
+            
+           
             return new QueryCpuCommand
             {
-                For = forResult,
+                For = new QueryFor(forTargetsRaw),
                 SearchConstraints = constraints
             };
             
         }
 
+    }
+
+    public class DumpCommand : CpuCommand
+    {
+        public SearchConstraints From { get; set; }
+
+        public Target Target { get; set; }
+
+        public override string ToString()
+        {
+            return "DUMP "+From + " "+Target;
+        }
+
+        public override void Run(Process scenario, CpuCommandContext context)
+        {
+            var disks = context.Scenario.FindDisks(From);
+            foreach (var disk in disks)
+            {
+                var coordinates = disk.FilterCoordinates(From);
+
+                foreach (var memoryCoordinate in coordinates)
+                {
+                    var dumpVal = disk.Read(memoryCoordinate);
+                    Target.WriteToTarget(scenario,dumpVal,context);
+                }
+            }
+
+        }
+
+        //public static ReadCpuCommand FromText(string text)
+        //{
+
+
+        //    var substring = text.Substring(4);
+        //    var parts = substring.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        //    var from = Target.ResolveTarget(parts[0]);
+        //    var to = Target.ResolveTarget(parts[1]);
+
+        //    return new ReadCpuCommand
+        //    {
+        //        From = from,
+        //        To = to
+        //    };
+        //}
     }
 
     public class ReadCpuCommand :CpuCommand

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography.X509Certificates;
 using gmtk2020_blazor.Models.Cpu;
 
 namespace GameLogic
@@ -234,15 +235,42 @@ namespace GameLogic
             }
         }
 
-        public MemoryCoordinate? Find(SearchConstraints constraints, string value)
+        public MemoryCoordinate? Find(SearchConstraints constraints, IReadOnlyCollection<string> value)
         {
+            var paddedValues = value.Select(x =>
+            {
+                if (x.Length < 4)
+                {
+                    return x.PadRight(4, ' ');
+                }
+                else
+                    return x;
+
+            }).ToList();
+
+
+
             var coordinates = FilterCoordinates(constraints);
             foreach (var coordinate in coordinates)
             {
-                var read = Read(coordinate);
-                var isContained = read.Contains(value);
-                if (isContained)
+                bool matched=true;
+                var offset = coordinate;
+                foreach (var paddedValue in paddedValues)
+                {
+                    var valueAtAddress = Read(offset);
+                    var areEqual = string.Equals(valueAtAddress,paddedValue,StringComparison.OrdinalIgnoreCase);
+                    if (!areEqual)
+                    {
+                        matched = false;
+                        break;
+                    }
+
+                    offset = this.NextAddress(coordinate);
+                }
+
+                if (matched)
                     return coordinate;
+
             }
 
             return null;
@@ -393,6 +421,8 @@ namespace GameLogic
 
         public void Append(string text)
         {
+            Console.WriteLine("PRINTER: "+text);
+
             if (TextLines.Count == 0)
                 NewLine();
 
@@ -483,11 +513,7 @@ namespace GameLogic
 
 
 
-            ManualProgram.AllCommands.Add(new AssertCpuCommand
-            {
-                CompareLeft = MediaTarget.FromText("M:0C"),
-                CompareRight = MediaTarget.FromText("0:0,0")
-            });
+            ManualProgram.AllCommands.Add(new AssertCpuCommand("M:0C", "0:0,0"));
 
             process.Source = ManualProgram;
             this.AddProcess("Login.exe",process);
@@ -609,11 +635,7 @@ namespace GameLogic
             ManualProgram.AllCommands.Add(new SeekCpuCommand{Target=new VariableTarget{Number = "Index"},Amount = new LiteralTarget{Value = "1"}});
 
             ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT @Index M:0B"));
-            ManualProgram.AllCommands.Add(new AssertCpuCommand
-            {
-                CompareLeft = MediaTarget.FromText("0:0A"),
-                CompareRight = DeRefTarget.FromText("XM:0B"),
-            });
+            ManualProgram.AllCommands.Add(new AssertCpuCommand("0:0A", "XM:0B"));
 
             //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KB M:2C"));
 
@@ -721,12 +743,7 @@ namespace GameLogic
             ManualProgram.AllCommands.Add(QueryCpuCommand.FromText("QUERY 0:3* FOR @SEARCH_TEXT"));
 
             ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT @Index M:0B"));
-            ManualProgram.AllCommands.Add(new AssertCpuCommand
-            {
-                CompareLeft = MediaTarget.FromText("M:0A"),
-                CompareRight = DeRefTarget.FromText("XM:0B"),
-            });
-
+            ManualProgram.AllCommands.Add(new AssertCpuCommand("M:0A", "XM:0B"));
 
 
             AddProcess("Login.exe", new Process
@@ -796,13 +813,13 @@ namespace GameLogic
             disk0.EncryptionState[new MemoryCoordinate { X = 2, Y = 0, DriveId = 0 }] = true;
             disk0.EncryptionState[new MemoryCoordinate { X = 3, Y = 0, DriveId = 0 }] = true;
 
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 0 }, "~451");
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 1 }, "~451");
             disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 1, DriveId = 0 }] = true;
             disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 1, DriveId = 0 }] = true;
             disk0.EncryptionState[new MemoryCoordinate { X = 2, Y = 1, DriveId = 0 }] = true;
             disk0.EncryptionState[new MemoryCoordinate { X = 3, Y = 1, DriveId = 0 }] = true;
 
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 0 }, "~451");
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 2 }, "~451");
             disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 2, DriveId = 0 }] = true;
             disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 2, DriveId = 0 }] = true;
             disk0.EncryptionState[new MemoryCoordinate { X = 2, Y = 2, DriveId = 0 }] = true;
@@ -836,11 +853,13 @@ namespace GameLogic
             Memory.SetMemoryToDefault();
 
             var ManualProgram = new CpuProgram();
+            
             ManualProgram.AllCommands = new List<CpuCommand>();
-
+            
             ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KBD 1:1B"));
             ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT `QUER 1:0A "));
             ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT `Y 1:1A  "));
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT @StartLiteral 1:0B "));
 
             ManualProgram.AllCommands.Add(ExecCpuCommand.FromText("EXEC 1:**"));
 
@@ -848,11 +867,7 @@ namespace GameLogic
             //ManualProgram.AllCommands.Add(QueryCpuCommand.FromText("QUERY 0:3* FOR @SEARCH_TEXT"));
 
             ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT @Index M:0B"));
-            ManualProgram.AllCommands.Add(new AssertCpuCommand
-            {
-                CompareLeft = MediaTarget.FromText("M:0A"),
-                CompareRight = DeRefTarget.FromText("XM:0B"),
-            });
+            ManualProgram.AllCommands.Add(new AssertCpuCommand("1:1B", "XM:0B"));
 
 
 
@@ -975,13 +990,7 @@ namespace GameLogic
             //ManualProgram.AllCommands.Add(QueryCpuCommand.FromText("QUERY 0:3* FOR @SEARCH_TEXT"));
 
             ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT @Index M:0B"));
-            ManualProgram.AllCommands.Add(new AssertCpuCommand
-            {
-                CompareLeft = MediaTarget.FromText("M:0A"),
-                CompareRight = DeRefTarget.FromText("XM:0B"),
-            });
-
-
+            ManualProgram.AllCommands.Add(new AssertCpuCommand("M:0A", "XM:0B"));
 
             AddProcess("Login.exe", new Process
             {
@@ -1023,6 +1032,226 @@ namespace GameLogic
         }
     }
 
+    ////what if we put a second instruction in the query, separated by |
+    //public class SqlInstructionPacking : Scenario
+    //{
+
+    //}
+
+    //public class SqlChangeEscapeCharacterScenario : Scenario
+    //{
+
+    //}
+
+    public class ExploitNextAddressCheck : Scenario
+    {
+        public override void Initialize()
+        {
+            var Memory = new AddressableRegion
+            {
+                SizeRows = 2,
+                SizeColumns = 4,
+            };
+            Memory.InitializeEmptyMemorySpace();
+
+
+
+            #region disk
+            var disk0 = new AddressableRegion();
+            disk0.VolumeName = "Keystore";
+            disk0.ReadOnly = true;
+            disk0.DriveId = 0;
+            disk0.SizeRows = 5;
+            disk0.SizeColumns = 3;
+            disk0.InitializeEmptyMemorySpace();
+
+            //disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 0 }, "USER");
+            //disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 1, Y = 0 }, "PASS");
+            //disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 2, Y = 0 }, "XXXX");
+
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 0 }, "USR1");
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 1, Y = 0 }, "0451");
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 2, Y = 0 }, "HIGH");
+            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 0, DriveId = 0 }] = false;
+            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 0, DriveId = 0 }] = true;
+
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 1 }, "USR2");
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 1, Y = 1 }, "0451");
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 2, Y = 1 }, "HIGH");
+            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 1, DriveId = 0 }] = false;
+            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 1, DriveId = 0 }] = true;
+
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 2 }, "USR3");
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 1, Y = 2 }, "0451");
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 2, Y = 2 }, "LOW ");
+            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 2, DriveId = 0 }] = false;
+            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 2, DriveId = 0 }] = true;
+
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 3 }, "USR4");
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 1, Y = 3 }, "0451");
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 2, Y = 3 }, "LOW ");
+            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 3, DriveId = 0 }] = false;
+            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 3, DriveId = 0 }] = true;
+
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 4 }, "USR5");
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 1, Y = 4 }, "0451");
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 2, Y = 4 }, "LOW ");
+            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 4, DriveId = 0 }] = false;
+            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 4, DriveId = 0 }] = true;
+
+            disk0.SetMemoryToDefault();
+            Disks.Add(disk0);
+            #endregion
+
+
+            var disk1 = new AddressableRegion
+            {
+                VolumeName = "SWAP_DRIVE",
+                ReadOnly = false,
+                DriveId = 1,
+                SizeRows = 2,
+                SizeColumns = 4
+            };
+            disk1.InitializeEmptyMemorySpace();
+            disk1.SetDefault(MemoryCoordinate.FromText("1:0A"), "ACCE");
+            disk1.SetDefault(MemoryCoordinate.FromText("1:1A"), "SS G");
+            disk1.SetDefault(MemoryCoordinate.FromText("1:2A"), "RANT");
+            disk1.SetDefault(MemoryCoordinate.FromText("1:3A"), "ED  ");
+            disk1.SetDefault(MemoryCoordinate.FromText("1:0B"), "----");
+            disk1.SetDefault(MemoryCoordinate.FromText("1:1B"), "    ");
+            disk1.SetDefault(MemoryCoordinate.FromText("1:2B"), "SEC:");
+            disk1.SetDefault(MemoryCoordinate.FromText("1:3B"), "----");
+
+            disk1.SetMemoryToDefault();
+            Disks.Add(disk1);
+
+
+            var disk2 = new AddressableRegion
+            {
+                VolumeName = "QUERY_BUILDER",
+                ReadOnly = false,
+                DriveId = 2,
+                SizeRows = 2,
+                SizeColumns = 4
+            };
+            disk2.InitializeEmptyMemorySpace();
+            disk2.SetDefault(MemoryCoordinate.FromText("2:0A"), "QUER");
+            disk2.SetDefault(MemoryCoordinate.FromText("2:1A"), "Y ");
+            disk2.SetDefault(MemoryCoordinate.FromText("2:2A"), "0:**");
+            disk2.SetDefault(MemoryCoordinate.FromText("2:3A"), " FOR");
+            disk2.SetDefault(MemoryCoordinate.FromText("2:0B"), " @USR");
+            disk2.SetDefault(MemoryCoordinate.FromText("2:1B"), "/@PWD");
+
+            disk2.SetMemoryToDefault();
+            Disks.Add(disk2);
+
+            Memory.SetMemoryToDefault();
+
+            var ManualProgram = new CpuProgram();
+            ManualProgram.AllCommands = new List<CpuCommand>();
+
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KBD M:0A"));
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:0A @USR"));
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:1A @PWD"));
+
+            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:0A 2:1B"));
+
+            //ManualProgram.AllCommands.Add(ExecCpuCommand.FromText("EXEC 2:**"));
+            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT @Index 1:1A"));
+            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT X1:1A @U"));
+
+            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:1A 2:1B"));
+            ManualProgram.AllCommands.Add(ExecCpuCommand.FromText("EXEC 2:**"));
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT @Index 1:0B"));
+            ManualProgram.AllCommands.Add(new SeekCpuCommand()
+            {
+                Amount = new LiteralTarget{Value="2"},
+                Target = new VariableTarget{Number = "Index"}
+            });
+
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT @Index 1:3B"));
+
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT X1:0B 1:0B"));
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT X1:3B 1:3B"));
+            ManualProgram.AllCommands.Add(new DumpCommand()
+            {
+                From = new SearchConstraints
+                {
+                    DriveConstraint = 1
+                },
+                Target = new PrinterTarget()
+            });
+            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT `| PRINT"));
+
+            //ManualProgram.AllCommands.Add(new SeekCpuCommand
+            //    {
+            //        Amount = Target.ResolveTarget("1:0A"),
+            //        Target = Target.ResolveTarget("1:1A")
+            //    }
+            //);
+
+            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT X1:1A @P"));
+
+            //ManualProgram.AllCommands.Add(new AssertCpuCommand
+            //{
+            //    Assertions = new List<Assertion>
+            //    {
+            //        new Assertion {CompareRight = Target.ResolveTarget("@U"), CompareLeft = Target.ResolveTarget("M:0A")},
+            //       new Assertion {CompareRight = Target.ResolveTarget("@P"), CompareLeft = Target.ResolveTarget("M:1A")}
+            //    }
+
+            //});
+
+            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT `0 1:0A"));
+
+            //ManualProgram.AllCommands.Add(new SeekCpuCommand
+            //    {
+            //        Amount = new LiteralTarget { Value = "1" },
+            //        Target = Target.ResolveTarget("1:0A")
+            //    }
+            //);
+
+
+            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT 2:1A 1:1A"));
+            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT 2:2A 1:2A"));
+            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT 2:3A 1:3A"));
+            ////ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT 2:0B 1:0B"));
+
+            //ManualProgram.AllCommands.Add(ExecCpuCommand.FromText("EXEC 1:**"));
+
+            ////ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:0A @SEARCH_TEXT"));
+            ////ManualProgram.AllCommands.Add(QueryCpuCommand.FromText("QUERY 0:3* FOR @SEARCH_TEXT"));
+
+            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT @Index M:0B"));
+
+
+
+
+            AddProcess("Login.exe", new Process
+            {
+                Memory = Memory,
+                Source = ManualProgram,
+                Prompt = "Please enter your password",
+                Instruction = "^ Can't remember your password? Try 'Password'."
+
+            });
+
+
+        }
+
+        public override bool IsAtWinCondition()
+        {
+            var winningLines = Printer.TextLines
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .FirstOrDefault(x => "ACCESS GRANTED USR2 SEC:HIGH" == x || "ACCESS GRANTED USR1 SEC:HIGH" == x);
+
+
+            if (winningLines != null)
+                Console.WriteLine("Winning line: " + winningLines);
+            return winningLines != null;
+        }
+    }
+
 
     public class SqlForUsingMemoryAddress : Scenario
     {
@@ -1051,13 +1280,13 @@ namespace GameLogic
             disk0.EncryptionState[new MemoryCoordinate { X = 2, Y = 0, DriveId = 0 }] = true;
             disk0.EncryptionState[new MemoryCoordinate { X = 3, Y = 0, DriveId = 0 }] = true;
 
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 0 }, "~451");
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 1 }, "~451");
             disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 1, DriveId = 0 }] = true;
             disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 1, DriveId = 0 }] = true;
             disk0.EncryptionState[new MemoryCoordinate { X = 2, Y = 1, DriveId = 0 }] = true;
             disk0.EncryptionState[new MemoryCoordinate { X = 3, Y = 1, DriveId = 0 }] = true;
 
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 0 }, "~451");
+            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 2 }, "~451");
             disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 2, DriveId = 0 }] = true;
             disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 2, DriveId = 0 }] = true;
             disk0.EncryptionState[new MemoryCoordinate { X = 2, Y = 2, DriveId = 0 }] = true;
@@ -1124,13 +1353,7 @@ namespace GameLogic
             //ManualProgram.AllCommands.Add(QueryCpuCommand.FromText("QUERY 0:3* FOR @SEARCH_TEXT"));
 
             ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT @Index M:0B"));
-            ManualProgram.AllCommands.Add(new AssertCpuCommand
-            {
-                CompareLeft = MediaTarget.FromText("M:0A"),
-                CompareRight = DeRefTarget.FromText("XM:0B"),
-            });
-
-
+            ManualProgram.AllCommands.Add(new AssertCpuCommand("M:0A", "XM:0B"));
 
             AddProcess("Login.exe", new Process
             {
@@ -1259,11 +1482,7 @@ namespace GameLogic
 
             ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KB M:2C"));
 
-            ManualProgram.AllCommands.Add(new AssertCpuCommand
-            {
-                CompareLeft = MediaTarget.FromText("M:2C"),
-                CompareRight = MediaTarget.FromText("0:0,0")
-            });
+            ManualProgram.AllCommands.Add(new AssertCpuCommand("M:2C", "0:0,0"));
 
             AddProcess("Login.exe", new Process
             {
@@ -1337,11 +1556,7 @@ var Memory = new AddressableRegion
             ManualProgram.AllCommands = new List<CpuCommand>();
             ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KB M:0,0"));
 
-            ManualProgram.AllCommands.Add(new AssertCpuCommand
-            {
-                CompareLeft = MediaTarget.FromText("M:0,0"),
-                CompareRight = MediaTarget.FromText("M:3,2")
-            });
+            ManualProgram.AllCommands.Add(new AssertCpuCommand("M:0,0", "M:3,2"));
 
             AddProcess("Login.exe", new Process { Memory = Memory, Source = ManualProgram,
                 Prompt = "Please enter your pin number.",

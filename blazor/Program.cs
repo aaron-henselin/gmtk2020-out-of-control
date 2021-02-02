@@ -15,7 +15,6 @@ namespace gmtk2020_blazor
             builder.RootComponents.Add<MyApp>("myApp");
 
             builder.Services.AddTransient(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
-            builder.Services.AddTelerikBlazor();
             builder.Services.AddTransient<BlazorTimer>();
             await builder.Build().RunAsync();
         }

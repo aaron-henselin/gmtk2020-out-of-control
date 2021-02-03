@@ -9,7 +9,7 @@ namespace GameLogic
 {
     public class SqlOpenSearchConstraint : Scenario
     {
-        public SqlOpenSearchConstraint(HttpClient httpClient) : base(httpClient, "scenarioName")
+        public SqlOpenSearchConstraint(ScenarioPackage package) : base(package)
         {
         }
 

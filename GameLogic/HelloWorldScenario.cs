@@ -8,7 +8,7 @@ namespace GameLogic
     public class HelloWorldScenario : Scenario
     {
         
-        public HelloWorldScenario(HttpClient httpClient) : base(httpClient, "1_hello_world")
+        public HelloWorldScenario(ScenarioPackage package) : base(package)
         {
 
         }

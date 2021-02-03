@@ -9,7 +9,7 @@ namespace GameLogic
 {
     public class SqlFakeGotoLabel : Scenario
     {
-        public SqlFakeGotoLabel(HttpClient httpClient) : base(httpClient,"")
+        public SqlFakeGotoLabel(ScenarioPackage package) : base(package)
         {
         }
 

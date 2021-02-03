@@ -7,7 +7,7 @@ namespace GameLogic
 {
     public class WhatsThePasswordScenario : Scenario
     {
-        public WhatsThePasswordScenario(HttpClient client) : base(client, "2_whats_the_password")
+        public WhatsThePasswordScenario(ScenarioPackage package) : base(package)
         {
 
         }

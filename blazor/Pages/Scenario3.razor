@@ -39,14 +39,15 @@
 </div>
 
 
-@inject HttpClient httpClient
+@inject ScenarioPackageDownloader PackageDownloader
 @code {
 
-        protected override void OnInitialized()
+        protected override async Task OnInitializedAsync()
         {
-            base.OnInitialized();
+            await base.OnInitializedAsync();
 
-            this.Scenario = new LateralThinkingScenario(httpClient);
+            var package = await PackageDownloader.Download("3_lateral_thinking");
+            this.Scenario = new LateralThinkingScenario(package);
         }
 
     }

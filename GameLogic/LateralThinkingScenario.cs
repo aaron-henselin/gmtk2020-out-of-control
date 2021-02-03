@@ -7,7 +7,7 @@ namespace GameLogic
 {
     public class LateralThinkingScenario : Scenario
     {
-        public LateralThinkingScenario(HttpClient httpClient) : base(httpClient, "scenarioName")
+        public LateralThinkingScenario(ScenarioPackage package) : base(package)
         {
         }
 

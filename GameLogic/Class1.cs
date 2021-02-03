@@ -494,24 +494,36 @@ namespace GameLogic
         }
     }
 
-    public abstract class Scenario
+    public class ScenarioPackage
+    {
+        public List<ScenarioProcess> Processes { get; set; } = new List<ScenarioProcess>();
+        public List<Hint> Hints { get; set; } = new List<Hint>();
+    }
+
+    public class ScenarioProcess 
+    {
+        public string Name { get; set; }
+        public Process Process { get; set; }
+    }
+
+    public class ScenarioPackageDownloader
     {
         private readonly HttpClient _httpClient;
-        private readonly string _scenarioName;
 
-        public Scenario(HttpClient httpClient, string scenarioName)
+        public ScenarioPackageDownloader(HttpClient httpClient)
         {
             _httpClient = httpClient;
-            _scenarioName = scenarioName;
         }
 
-        public async Task Download(HttpClient httpClient, string scenarioName)
+        public async Task<ScenarioPackage> Download(string scenarioName)
         {
-            var programsTxt = await httpClient.GetStringAsync($"/{scenarioName}/programs.txt");
+            var package = new ScenarioPackage();
+
+            var programsTxt = await _httpClient.GetStringAsync($"/{scenarioName}/programs.txt");
             var groups = FileReader.ReadArray(programsTxt);
             foreach (var group in groups)
             {
-                var programs_txt = await httpClient.GetStringAsync($"/{scenarioName}/programs.txt");
+                var programs_txt = await _httpClient.GetStringAsync($"/{scenarioName}/programs.txt");
                 var sections = FileReader.ReadSections(programs_txt);
 
 
@@ -527,54 +539,40 @@ namespace GameLogic
                 var memorySection = sections["memory"];
                 var memory = FileReader.ReadAddressableRegion(memorySection.Lines);
 
-                AddProcess(programName, new Process
+                package.Processes.Add(new ScenarioProcess
                 {
-                    Memory = memory,
-                    Prompt = prompt,
-                    Instruction = instruction,
-                    Source = new CpuProgram
+                    Name = programName,
+                    Process = new Process
                     {
-                        AllCommands = commands.ToList()
+                        Memory = memory,
+                        Prompt = prompt,
+                        Instruction = instruction,
+                        Source = new CpuProgram
+                        {
+                            AllCommands = commands.ToList()
+                        }
                     }
                 });
+                
 
-                var hints_txt = await httpClient.GetStringAsync($"/{scenarioName}/hints.txt");
-                Hints = FileReader.ReadHints(hints_txt).ToList();
+                var hints_txt = await _httpClient.GetStringAsync($"/{scenarioName}/hints.txt");
+                package.Hints = FileReader.ReadHints(hints_txt).ToList();
 
             }
 
-
-            //this.Hints.Add(new Hint
-            //{
-            //    Title = "What am I looking at?",
-            //    Body = "This program places your number input into memory using the PUT instruction. It then PUTs 'hello world', which is stored at a later address, to your display output. You cannot modify the CPU instructions, so you must find another way to alter the control flow of the program.",
-            //    InterfaceHelpLink = true
-
-            //});
-
-            //this.Hints.Add(new Hint
-            //{
-            //    Title = "BUG REPORT 001",
-            //    Body = "Did you try entering 11? Doesn't seem like it's actually restricting numbers to 1-10."
-            //});
-
-            //this.Hints.Add(new Hint
-            //{
-            //    Title = "BUG REPORT 002",
-            //    Body = "Addendum to report #1, it looks like the field is not restricted to numbers. I was able to enter the word 'HOTDOG'"
-            //});
-
-            //AddProcess("hello_word.exe", new Process
-            //{
-            //    Memory = Memory,
-            //    Source = ManualProgram,
-            //    Prompt = "What's your favorite number between 1 and 10?",
-            //    Instruction = "^ Please answer truthfully. This program knows when you're lying."
-
-            //});
-
+            return package;
         }
 
+    }
+
+    public abstract class Scenario
+    {
+        private readonly ScenarioPackage scenarioPackage;
+
+        public Scenario(ScenarioPackage scenarioPackage)
+        {
+            this.scenarioPackage = scenarioPackage;
+        }
 
         public IReadOnlyCollection<AddressableRegion> FindDisks(SearchConstraints SearchConstraints)
         {
@@ -604,10 +602,6 @@ namespace GameLogic
 
         public string NextScenario { get; set; }
 
-        public virtual async Task Initialize()
-        {
-            await Download(_httpClient, _scenarioName);
-        }
 
         public abstract bool IsAtWinCondition();
 
@@ -670,7 +664,7 @@ namespace GameLogic
 
     public class SqlScenario3 : Scenario
     {
-        public SqlScenario3(HttpClient httpClient) : base(httpClient, "scenarioName")
+        public SqlScenario3(ScenarioPackage package) : base(package)
         {
         }
 
@@ -809,14 +803,14 @@ namespace GameLogic
 
     public class DereferencingScenario : Scenario
     {
-        public DereferencingScenario(HttpClient client) : base(client, "4_deref")
+        public DereferencingScenario(ScenarioPackage package) : base(package)
         {
 
         }
 
         public override async Task Initialize()
         {
-            await base.Initialize();
+            
 
             var Memory = new AddressableRegion
             {

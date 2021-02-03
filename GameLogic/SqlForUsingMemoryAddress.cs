@@ -9,7 +9,7 @@ namespace GameLogic
 {
     public class SqlForUsingMemoryAddress : Scenario
     {
-        public SqlForUsingMemoryAddress(HttpClient httpClient) : base(httpClient, "scenarioName")
+        public SqlForUsingMemoryAddress(ScenarioPackage package) : base(package)
         {
         }
 

@@ -18,7 +18,7 @@ namespace gmtk2020_blazor
             builder.Services.AddTransient(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
             builder.Services.AddTransient<BlazorTimer>();
 
-            builder.Services.AddTransient<HelloWorldScenario>();
+            builder.Services.AddTransient<ScenarioPackageDownloader>();
 
 
             await builder.Build().RunAsync();

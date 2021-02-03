@@ -9,7 +9,7 @@ namespace GameLogic
 {
     public class SqlReplaceEntireQuery : Scenario
     {
-        public SqlReplaceEntireQuery(HttpClient httpClient) : base(httpClient, "scenarioName")
+        public SqlReplaceEntireQuery(ScenarioPackage package) : base(package)
         {
         }
 

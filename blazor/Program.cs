@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Net.Http;
 using System.Threading.Tasks;
+using GameLogic;
 using gmtk2020_blazor.Helpers;
 
 namespace gmtk2020_blazor
@@ -16,6 +17,10 @@ namespace gmtk2020_blazor
 
             builder.Services.AddTransient(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
             builder.Services.AddTransient<BlazorTimer>();
+
+            builder.Services.AddTransient<HelloWorldScenario>();
+
+
             await builder.Build().RunAsync();
         }
     }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using GameLogic;
 using gmtk2020_blazor.Helpers;
@@ -14,6 +15,9 @@ namespace gmtk2020_blazor
         [Inject]
         public BlazorTimer Timer { get; set; }
 
+        [Inject]
+        public HttpClient HttpClient { get; set; }
+
         public static EventHandler<EventArgs> StepRan;
 
         public EventHandler<EventArgs> RunningStatusChanged;
@@ -22,6 +26,7 @@ namespace gmtk2020_blazor
 
         //public bool ManualProgramRunning { get; set; }
         public string ViewportProcessName { get; set; }
+        public string ScenarioName { get; set; }
 
         public Process ViewportProcess
         {
@@ -170,7 +175,7 @@ namespace gmtk2020_blazor
 
         protected override void OnParametersSet()
         {
-            Scenario.Initialize();
+            Scenario.Initialize(HttpClient,ScenarioName);
 
             if (string.IsNullOrWhiteSpace(ViewportProcessName))
             {

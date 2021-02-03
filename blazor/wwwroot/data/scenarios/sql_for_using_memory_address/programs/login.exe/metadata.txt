@@ -1,0 +1,3 @@
+﻿prompt:Please enter your password
+instruction:^ Can't remember your password? Try 'Password'.
+name:Login.exe

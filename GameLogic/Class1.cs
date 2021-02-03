@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
+using System.Threading.Tasks;
 using gmtk2020_blazor.Models.Cpu;
 
 namespace GameLogic
@@ -358,8 +360,189 @@ namespace GameLogic
         public string Instruction { get; set; }
     }
 
+    public static class FileReader
+    {
+        public static IReadOnlyCollection<CpuCommand> ReadCpuCommands(string str)
+        {
+            var commands = new List<CpuCommand>();
+            commands.Add(ReadCpuCommand.FromText(str));
+            return commands;
+        }
+
+        public static IEnumerable<IEnumerable<string>> ReadArray(string str)
+        {
+            string[] lines = str.Split(
+                new[] { Environment.NewLine },
+                StringSplitOptions.None
+            );
+            List<List<string>> groups = new List<List<string>> { new List<string>() };
+            foreach (var line in lines)
+            {
+                groups[groups.Count - 1].Add(line);
+
+                if ("--" == line)
+                    groups.Add(new List<string>());
+
+            }
+
+            return groups;
+        }
+
+        public static KeyValuePair<string, string> ReadKvp(string line)
+        {
+            var index = line.IndexOf(':');
+            var left = line.Substring(0, index);
+            var right = line.Substring(index + 1);
+            return new KeyValuePair<string, string>(left, right);
+        }
+
+        static IEnumerable<string> Split(string str, int chunkSize)
+        {
+            return Enumerable.Range(0, str.Length / chunkSize)
+                .Select(i => str.Substring(i * chunkSize, chunkSize));
+        }
+
+        public static IDictionary<string, string> ReadDictionary(IEnumerable<string> lines)
+        {
+            return lines.Select(ReadKvp)
+                .ToDictionary(
+                    x => x.Key,
+                    x => x.Value,StringComparer.OrdinalIgnoreCase);
+        }
+
+        public static AddressableRegion ReadAddressableRegion(string regionDefinition)
+        {
+            var lines = ReadArray(regionDefinition).ToList();
+
+            var kvp = ReadKvp(lines[0]);
+            var size = kvp.Key
+                .Split(new[] { 'x' })
+                .Select(x => Convert.ToInt32(x))
+                .ToList();
+
+            var region = new AddressableRegion
+            {
+                SizeRows = size[0],
+                SizeColumns = size[1],
+            };
+            region.InitializeEmptyMemorySpace();
+
+            var multiline = string.IsNullOrWhiteSpace(kvp.Value);
+            if (!multiline)
+            {
+                var chunks = Split(kvp.Value, 4);
+                var writeCoord = region.AllCoordinates.First();
+
+                foreach (var chunk in chunks)
+                {
+                    region.SetDefault(writeCoord, chunk);
+                    writeCoord = region.NextAddress(writeCoord);
+                }
+            }
+            else
+            {
+                lines.Skip(1);
+            }
+
+            return region;
+        }
+
+        public static IReadOnlyCollection<Hint> ReadHints(string hints_txt)
+        {
+            List<Hint> hints = new List<Hint>();
+            var groups = ReadArray(hints_txt);
+            foreach (var group in groups)
+            {
+                var dict = FileReader.ReadDictionary(group);
+                var hint = new Hint
+                {
+                    Body = dict["body"],
+                    Title = dict["title"],
+                   // InterfaceHelpLink = "true" == dict["help_link"],
+                };
+                hints.Add(hint);
+            }
+            return hints;
+        }
+    }
+
     public abstract class Scenario
     {
+        private readonly HttpClient _httpClient;
+        private readonly string _scenarioName;
+
+        public Scenario(HttpClient httpClient, string scenarioName)
+        {
+            _httpClient = httpClient;
+            _scenarioName = scenarioName;
+        }
+
+        public async Task Download(HttpClient httpClient, string scenarioName)
+        {
+            var programsTxt = await httpClient.GetStringAsync($"/{scenarioName}/programs/programs.txt");
+            var groups = FileReader.ReadArray(programsTxt);
+            foreach (var group in groups)
+            {
+                var programMetadata = FileReader.ReadDictionary(group);
+                var programName = programMetadata["name"];
+                var prompt = programMetadata["prompt"];
+                var instruction = programMetadata["instruction"];
+
+                var source_txt = await httpClient.GetStringAsync($"/{scenarioName}/programs/{programName}/source.txt");
+                var commands = FileReader.ReadCpuCommands(source_txt);
+
+                var memory_txt = await httpClient.GetStringAsync($"/{scenarioName}/programs/{programName}/memory.txt");
+                var memory = FileReader.ReadAddressableRegion(memory_txt);
+
+                AddProcess(programName, new Process
+                {
+                    Memory = memory,
+                    Prompt = prompt,
+                    Instruction = instruction,
+                    Source = new CpuProgram
+                    {
+                        AllCommands = commands.ToList()
+                    }
+                });
+
+                var hints_txt = await httpClient.GetStringAsync($"/{scenarioName}/hints.txt");
+                Hints = FileReader.ReadHints(hints_txt).ToList();
+
+            }
+
+
+            //this.Hints.Add(new Hint
+            //{
+            //    Title = "What am I looking at?",
+            //    Body = "This program places your number input into memory using the PUT instruction. It then PUTs 'hello world', which is stored at a later address, to your display output. You cannot modify the CPU instructions, so you must find another way to alter the control flow of the program.",
+            //    InterfaceHelpLink = true
+
+            //});
+
+            //this.Hints.Add(new Hint
+            //{
+            //    Title = "BUG REPORT 001",
+            //    Body = "Did you try entering 11? Doesn't seem like it's actually restricting numbers to 1-10."
+            //});
+
+            //this.Hints.Add(new Hint
+            //{
+            //    Title = "BUG REPORT 002",
+            //    Body = "Addendum to report #1, it looks like the field is not restricted to numbers. I was able to enter the word 'HOTDOG'"
+            //});
+
+            //AddProcess("hello_word.exe", new Process
+            //{
+            //    Memory = Memory,
+            //    Source = ManualProgram,
+            //    Prompt = "What's your favorite number between 1 and 10?",
+            //    Instruction = "^ Please answer truthfully. This program knows when you're lying."
+
+            //});
+
+        }
+
+
         public IReadOnlyCollection<AddressableRegion> FindDisks(SearchConstraints SearchConstraints)
         {
             List<AddressableRegion> disks = new List<AddressableRegion>();
@@ -387,7 +570,11 @@ namespace GameLogic
         }
 
         public string NextScenario { get; set; }
-        public abstract void Initialize();
+
+        public virtual async Task Initialize()
+        {
+            await Download(_httpClient, _scenarioName);
+        }
 
         public abstract bool IsAtWinCondition();
 
@@ -1045,6 +1232,11 @@ namespace GameLogic
 
     public class ExploitNextAddressCheck : Scenario
     {
+        public ExploitNextAddressCheck(HttpClient client) : base(client,"9_exploit_next_address")
+        {
+
+        }
+
         public override void Initialize()
         {
             var Memory = new AddressableRegion
@@ -1345,13 +1537,7 @@ namespace GameLogic
             ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT 2:1A 1:1A"));
             ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT 2:2A 1:2A"));
             ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT 2:3A 1:3A"));
-            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT 2:0B 1:0B"));
-
             ManualProgram.AllCommands.Add(ExecCpuCommand.FromText("EXEC 1:**"));
-
-            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:0A @SEARCH_TEXT"));
-            //ManualProgram.AllCommands.Add(QueryCpuCommand.FromText("QUERY 0:3* FOR @SEARCH_TEXT"));
-
             ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT @Index M:0B"));
             ManualProgram.AllCommands.Add(new AssertCpuCommand("M:0A", "XM:0B"));
 
@@ -1399,6 +1585,11 @@ namespace GameLogic
 
     public class DereferencingScenario : Scenario
     {
+        public DereferencingScenario(HttpClient client) : base(client, "4_deref")
+        {
+
+        }
+
         public override void Initialize()
         {
             var Memory = new AddressableRegion
@@ -1454,39 +1645,40 @@ namespace GameLogic
             #endregion
 
 
-            Memory.SetDefault(new MemoryCoordinate { X = 0, Y = 0 }, "MSG");
-            Memory.SetDefault(new MemoryCoordinate { X = 1, Y = 0 }, "1:0A");
-            Memory.SetDefault(new MemoryCoordinate { X = 2, Y = 0 }, "1:1A");
-            Memory.SetDefault(new MemoryCoordinate { X = 3, Y = 0 }, "1:2A");
+            //Memory.SetDefault(new MemoryCoordinate { X = 0, Y = 0 }, "MSG");
+            //Memory.SetDefault(new MemoryCoordinate { X = 1, Y = 0 }, "1:0A");
+            //Memory.SetDefault(new MemoryCoordinate { X = 2, Y = 0 }, "1:1A");
+            //Memory.SetDefault(new MemoryCoordinate { X = 3, Y = 0 }, "1:2A");
 
-            Memory.SetDefault(new MemoryCoordinate { X = 0, Y = 1 }, "NOTH");
-            Memory.SetDefault(new MemoryCoordinate { X = 1, Y = 1 }, "ING ");
-            Memory.SetDefault(new MemoryCoordinate { X = 2, Y = 1 }, "TO  ");
+            //Memory.SetDefault(new MemoryCoordinate { X = 0, Y = 1 }, "NOTH");
+            //Memory.SetDefault(new MemoryCoordinate { X = 1, Y = 1 }, "ING ");
+            //Memory.SetDefault(new MemoryCoordinate { X = 2, Y = 1 }, "TO  ");
 
-            Memory.SetDefault(new MemoryCoordinate { X = 0, Y = 2 }, "SEE ");
-            Memory.SetDefault(new MemoryCoordinate { X = 1, Y = 2 }, "HERE");
+            //Memory.SetDefault(new MemoryCoordinate { X = 0, Y = 2 }, "SEE ");
+            //Memory.SetDefault(new MemoryCoordinate { X = 1, Y = 2 }, "HERE");
 
 
-            //Memory.SetDefault(new MemoryCoordinate { X = 3, Y = 2 }, "0x51");
-            //Memory.EncryptionState[new MemoryCoordinate { X = 3, Y = 2 }] = true;
+            ////Memory.SetDefault(new MemoryCoordinate { X = 3, Y = 2 }, "0x51");
+            ////Memory.EncryptionState[new MemoryCoordinate { X = 3, Y = 2 }] = true;
 
             Memory.SetMemoryToDefault();
 
             
 
-            var ManualProgram = new CpuProgram();
-            ManualProgram.AllCommands = new List<CpuCommand>();
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT XM:1A PRINT"));
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT XM:2A PRINT"));
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT XM:3A PRINT"));
+            //var ManualProgram = new CpuProgram();
+            //ManualProgram.AllCommands = new List<CpuCommand>();
+            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT XM:1A PRINT"));
+            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT XM:2A PRINT"));
+            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT XM:3A PRINT"));
 
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KB M:2C"));
+            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KB M:2C"));
 
-            ManualProgram.AllCommands.Add(new AssertCpuCommand("M:2C", "0:0,0"));
+            //ManualProgram.AllCommands.Add(new AssertCpuCommand("M:2C", "0:0,0"));
 
             AddProcess("Login.exe", new Process
             {
-                Memory = Memory, Source = ManualProgram,
+                Memory = Memory, 
+                Source = ManualProgram,
                 Prompt = "Please enter your password",
                 Instruction = "^ Can't remember your password? Try 'Password'."
 
@@ -1526,6 +1718,11 @@ namespace GameLogic
 
     public class WhatsThePasswordScenario : Scenario
     {
+        public WhatsThePasswordScenario(HttpClient client) : base(client, "2_whats_the_password")
+        {
+
+        }
+
         public override void Initialize()
         {
             NextScenario = "Scenario3";
@@ -1607,60 +1804,71 @@ var Memory = new AddressableRegion
         }
     }
 
+
+
+
     public class HelloWorldScenario : Scenario
     {
+        
+        public HelloWorldScenario(HttpClient httpClient) : base(httpClient, "1_hello_world")
+        {
+
+        }
+
         public override void Initialize()
         {
             NextScenario = "Scenario2";
 
-            var Memory = new AddressableRegion
-            {
-                SizeRows = 3,
-                SizeColumns = 4,
-            };
-            Memory.InitializeEmptyMemorySpace();
+            base.Initialize();
 
-            Memory.SetDefault(new MemoryCoordinate { X = 0, Y = 1 }, "HELL");
-            Memory.SetDefault(new MemoryCoordinate { X = 1, Y = 1 }, "O, WO");
-            Memory.SetDefault(new MemoryCoordinate { X = 2, Y = 1 }, "RLD|");
+            //var Memory = new AddressableRegion
+            //{
+            //    SizeRows = 3,
+            //    SizeColumns = 4,
+            //};
+            //Memory.InitializeEmptyMemorySpace();
 
-            Memory.SetMemoryToDefault();
+            //Memory.SetDefault(new MemoryCoordinate { X = 0, Y = 1 }, "HELL");
+            //Memory.SetDefault(new MemoryCoordinate { X = 1, Y = 1 }, "O, WO");
+            //Memory.SetDefault(new MemoryCoordinate { X = 2, Y = 1 }, "RLD|");
 
-            var ManualProgram = new CpuProgram();
-            ManualProgram.AllCommands = new List<CpuCommand>();
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KB M:0,0"));
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:0,1 PRINT"));
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:1,1 PRINT"));
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:2,1 PRINT"));
+            //Memory.SetMemoryToDefault();
 
-            this.Hints.Add(new Hint
-            {
-                Title = "What am I looking at?",
-                Body = "This program places your number input into memory using the PUT instruction. It then PUTs 'hello world', which is stored at a later address, to your display output. You cannot modify the CPU instructions, so you must find another way to alter the control flow of the program.",
-                InterfaceHelpLink = true
+            //var ManualProgram = new CpuProgram();
+            //ManualProgram.AllCommands = new List<CpuCommand>();
+            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KB M:0,0"));
+            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:0,1 PRINT"));
+            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:1,1 PRINT"));
+            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:2,1 PRINT"));
 
-            });
+            //this.Hints.Add(new Hint
+            //{
+            //    Title = "What am I looking at?",
+            //    Body = "This program places your number input into memory using the PUT instruction. It then PUTs 'hello world', which is stored at a later address, to your display output. You cannot modify the CPU instructions, so you must find another way to alter the control flow of the program.",
+            //    InterfaceHelpLink = true
 
-            this.Hints.Add(new Hint
-            {
-                Title = "BUG REPORT 001",
-                Body = "Did you try entering 11? Doesn't seem like it's actually restricting numbers to 1-10."
-            });
+            //});
 
-            this.Hints.Add(new Hint
-            {
-                Title = "BUG REPORT 002",
-                Body = "Addendum to report #1, it looks like the field is not restricted to numbers. I was able to enter the word 'HOTDOG'"
-            });
+            //this.Hints.Add(new Hint
+            //{
+            //    Title = "BUG REPORT 001",
+            //    Body = "Did you try entering 11? Doesn't seem like it's actually restricting numbers to 1-10."
+            //});
 
-            AddProcess("hello_word.exe", new Process
-            {
-                Memory = Memory, 
-                Source = ManualProgram,
-                Prompt = "What's your favorite number between 1 and 10?",
-                Instruction = "^ Please answer truthfully. This program knows when you're lying."
+            //this.Hints.Add(new Hint
+            //{
+            //    Title = "BUG REPORT 002",
+            //    Body = "Addendum to report #1, it looks like the field is not restricted to numbers. I was able to enter the word 'HOTDOG'"
+            //});
 
-            });
+            //AddProcess("hello_word.exe", new Process
+            //{
+            //    Memory = Memory, 
+            //    Source = ManualProgram,
+            //    Prompt = "What's your favorite number between 1 and 10?",
+            //    Instruction = "^ Please answer truthfully. This program knows when you're lying."
+
+            //});
 
         }
 

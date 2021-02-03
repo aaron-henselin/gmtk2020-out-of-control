@@ -1,0 +1,9 @@
+﻿title:What am I looking at?
+body:This program places your number input into memory using the PUT instruction. It then PUTs 'hello world', which is stored at a later address, to your display output. You cannot modify the CPU instructions, so you must find another way to alter the control flow of the program.
+help_link:true
+--
+title:BUG REPORT 001
+body:Did you try entering 11? Doesn't seem like it's actually restricting numbers to 1-10.
+--
+title:BUG REPORT 002
+body:Addendum to report #1, it looks like the field is not restricted to numbers. I was able to enter the word 'HOTDOG'

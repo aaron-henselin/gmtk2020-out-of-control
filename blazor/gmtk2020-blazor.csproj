@@ -34,6 +34,10 @@
   <ItemGroup>
     <Folder Include="Models\Memory\" />
     <Folder Include="NewFolder\" />
+    <Folder Include="wwwroot\data\scenarios\1_hello_world\disks\" />
+    <Folder Include="wwwroot\data\scenarios\9_exploit_next_address\" />
+    <Folder Include="wwwroot\data\scenarios\2_whats_the_password\disks\" />
+    <Folder Include="wwwroot\data\scenarios\7_replace_entire_query\" />
   </ItemGroup>
 
   <ItemGroup>

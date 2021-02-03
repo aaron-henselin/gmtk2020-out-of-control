@@ -360,13 +360,42 @@ namespace GameLogic
         public string Instruction { get; set; }
     }
 
+    public class Section
+    {
+        public string Name { get; set; }
+        public List<string> Lines { get; set; } = new List<string>();
+    }
+
     public static class FileReader
     {
-        public static IReadOnlyCollection<CpuCommand> ReadCpuCommands(string str)
+        public static IReadOnlyCollection<CpuCommand> ReadCpuCommands(IReadOnlyCollection<string> strs)
         {
             var commands = new List<CpuCommand>();
-            commands.Add(ReadCpuCommand.FromText(str));
+            foreach (var str in strs)
+                commands.Add(ReadCpuCommand.FromText(str));
             return commands;
+        }
+
+        public static Dictionary<string,Section> ReadSections(string str)
+        {
+            string[] lines = str.Split(
+                new[] { Environment.NewLine },
+                StringSplitOptions.None
+            );
+            List<Section> groups = new List<Section> { };
+            foreach (var line in lines)
+            {
+                var isSectionName = line.StartsWith("=") && line.EndsWith("=");
+                if (isSectionName)
+                {
+                    var name = line.Substring(1, line.Length - 2);
+                    groups.Add(new Section{Name = name});
+                }
+                groups[groups.Count - 1].Lines.Add(line);
+
+            }
+
+            return groups.ToDictionary(x => x.Name,StringComparer.OrdinalIgnoreCase);
         }
 
         public static IEnumerable<IEnumerable<string>> ReadArray(string str)
@@ -410,9 +439,8 @@ namespace GameLogic
                     x => x.Value,StringComparer.OrdinalIgnoreCase);
         }
 
-        public static AddressableRegion ReadAddressableRegion(string regionDefinition)
+        public static AddressableRegion ReadAddressableRegion(IReadOnlyList<string> lines)
         {
-            var lines = ReadArray(regionDefinition).ToList();
 
             var kvp = ReadKvp(lines[0]);
             var size = kvp.Key
@@ -479,20 +507,25 @@ namespace GameLogic
 
         public async Task Download(HttpClient httpClient, string scenarioName)
         {
-            var programsTxt = await httpClient.GetStringAsync($"/{scenarioName}/programs/programs.txt");
+            var programsTxt = await httpClient.GetStringAsync($"/{scenarioName}/programs.txt");
             var groups = FileReader.ReadArray(programsTxt);
             foreach (var group in groups)
             {
-                var programMetadata = FileReader.ReadDictionary(group);
+                var programs_txt = await httpClient.GetStringAsync($"/{scenarioName}/programs.txt");
+                var sections = FileReader.ReadSections(programs_txt);
+
+
+                var metadataSection = sections["metadata"];
+                var programMetadata = FileReader.ReadDictionary(metadataSection.Lines);
                 var programName = programMetadata["name"];
                 var prompt = programMetadata["prompt"];
                 var instruction = programMetadata["instruction"];
 
-                var source_txt = await httpClient.GetStringAsync($"/{scenarioName}/programs/{programName}/source.txt");
-                var commands = FileReader.ReadCpuCommands(source_txt);
+                var sourceSection = sections["source"];
+                var commands = FileReader.ReadCpuCommands(sourceSection.Lines);
 
-                var memory_txt = await httpClient.GetStringAsync($"/{scenarioName}/programs/{programName}/memory.txt");
-                var memory = FileReader.ReadAddressableRegion(memory_txt);
+                var memorySection = sections["memory"];
+                var memory = FileReader.ReadAddressableRegion(memorySection.Lines);
 
                 AddProcess(programName, new Process
                 {
@@ -635,473 +668,16 @@ namespace GameLogic
 
     }
 
-    public class LateralThinkingScenario : Scenario
-    {
-        public override void Initialize()
-        {
-            NextScenario = "Scenario4";
-
-            var process = new Process
-            {
-                Prompt = "Please enter your 4 character pin number to manage the camera feed.",
-                Instruction = "^ Note: pin number 'HOTDOG' has been disabled due to it not being 4 characters, or a number."
-            };
-
-            var Memory = new AddressableRegion
-            {
-                SizeRows = 3,
-                SizeColumns = 4,
-            };
-            Memory.InitializeEmptyMemorySpace();
-
-            #region disk
-            var disk0 = new AddressableRegion();
-            disk0.VolumeName = "Keystore";
-            disk0.DriveId = 0;
-            disk0.SizeRows = 1;
-            disk0.SizeColumns = 4;
-            disk0.InitializeEmptyMemorySpace();
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 0 }, "0x1x");
-            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 0, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 0, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 2, Y = 0, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 3, Y = 0, DriveId = 0 }] = true;
-            disk0.SetMemoryToDefault();
-            Disks.Add(disk0);
-            #endregion
-
-            Memory.SetDefault(new MemoryCoordinate { X = 0, Y = 0}, "VALI");
-            Memory.SetDefault(new MemoryCoordinate { X = 1, Y = 0 }, "DATI");
-            Memory.SetDefault(new MemoryCoordinate { X = 2, Y = 0 }, "NG  ");
-
-            Memory.SetDefault(new MemoryCoordinate { X = 0, Y = 1 }, "PASS");
-            Memory.SetDefault(new MemoryCoordinate { X = 1, Y = 1 }, "WORD");
-            Memory.SetDefault(new MemoryCoordinate { X = 2, Y = 1 }, "|");
-
-            //Memory.SetDefault(new MemoryCoordinate { X = 3, Y = 2 }, "0x51");
-            //Memory.EncryptionState[new MemoryCoordinate { X = 3, Y = 2 }] = true;
-
-            Memory.SetMemoryToDefault();
-            process.Memory = Memory;
-
-            
-            var ManualProgram = new CpuProgram();
-            ManualProgram.AllCommands = new List<CpuCommand>();
-
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:0A PRINT"));
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:1A PRINT"));
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:2A PRINT"));
-
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:0B PRINT"));
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:1B PRINT"));
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:2B PRINT"));
-
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KB M:0C"));
-
-
-
-            ManualProgram.AllCommands.Add(new AssertCpuCommand("M:0C", "0:0,0"));
-
-            process.Source = ManualProgram;
-            this.AddProcess("Login.exe",process);
-
-            this.Hints.Add(new Hint
-            {
-                Title = "I can't modify the memory address I want to!",
-                Body = "If you can't go backwards, try going forwards."
-            });
-
-            this.Hints.Add(new Hint
-            {
-                Title = "That didn't help me because even if I could get to the memory, there's no password in memory to read or write to.",
-                Body = "Read the win criteria again."
-            });
-
-            this.Hints.Add(new Hint
-            {
-                Title = "Stop with the mind-games already.",
-                Body = "Your goal is not to pass an ASSERT. Your goal is to get the text 'ACCESS GRANTED' to output to the display."
-            });
-
-            this.Hints.Add(new Hint
-            {
-                Title = "How do I do that?",
-                Body = "The program prints out a helpful progress message to let you know that it's checking your password. Take advantage of it."
-            });
-
-
-        }
-
-        public override bool IsAtWinCondition()
-        {
-            var winningLines = Printer.TextLines
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .FirstOrDefault(x => "ACCESS GRANTED" == x);
-
-            if (winningLines != null)
-                Console.WriteLine("Winning line: " + winningLines);
-            return winningLines != null;
-        }
-    }
-
-    public class SqlFakeGotoLabel : Scenario
-    {
-        public override void Initialize()
-        {
-            var Memory = new AddressableRegion
-            {
-                SizeRows = 3,
-                SizeColumns = 4,
-            };
-            Memory.InitializeEmptyMemorySpace();
-
-            #region disk
-            var disk0 = new AddressableRegion();
-            disk0.VolumeName = "SWAP_DRIVE";
-            disk0.ReadOnly = false;
-            disk0.DriveId = 0;
-            disk0.SizeRows = 1;
-            disk0.SizeColumns = 4;
-            disk0.InitializeEmptyMemorySpace();
-            disk0.SetMemoryToDefault();
-            Disks.Add(disk0);
-            #endregion disk
-
-            #region disk
-            var disk1 = new AddressableRegion();
-            disk1.VolumeName = "Keystore";
-            disk1.ReadOnly = true;
-            disk1.DriveId = 1;
-            disk1.SizeRows = 1;
-            disk1.SizeColumns = 4;
-            disk1.InitializeEmptyMemorySpace();
-            disk1.SetDefault(new MemoryCoordinate { DriveId = 1, X = 0, Y = 0 }, "0451");
-            disk1.SetDefault(new MemoryCoordinate { DriveId = 1, X = 1, Y = 0 }, "0451");
-            disk1.SetDefault(new MemoryCoordinate { DriveId = 1, X = 2, Y = 0 }, "PASS");
-            disk1.SetDefault(new MemoryCoordinate { DriveId = 1, X = 3, Y = 0 }, "0451");
-
-            disk1.EncryptionState[new MemoryCoordinate { X = 0, Y = 0, DriveId = 1 }] = true;
-            disk1.EncryptionState[new MemoryCoordinate { X = 1, Y = 0, DriveId = 1 }] = true;
-            disk1.EncryptionState[new MemoryCoordinate { X = 2, Y = 0, DriveId = 1 }] = false;
-            disk1.EncryptionState[new MemoryCoordinate { X = 3, Y = 0, DriveId = 1 }] = true;
-            disk1.SetMemoryToDefault();
-            Disks.Add(disk1);
-            #endregion
-
-            #region disk
-
-            //var disk1 = new AddressableRegion
-            //{
-            //    VolumeName = "SWAP_DRIVE",
-            //    ReadOnly = true,
-            //    DriveId = 1,
-            //    SizeRows = 1,
-            //    SizeColumns = 4,
-            //    IsExternalDrive = true,
-            //    IsMounted = false
-            //};
-            //disk1.InitializeEmptyMemorySpace();
-            //disk1.SetDefault(new MemoryCoordinate { DriveId = 1, X = 0, Y = 0 }, "YOUR");
-            //disk1.SetDefault(new MemoryCoordinate { DriveId = 1, X = 1, Y = 0 }, "DATA");
-            //disk1.SetDefault(new MemoryCoordinate { DriveId = 1, X = 2, Y = 0 }, "HERE");
-            //disk1.SetMemoryToDefault();
-            //Disks.Add(disk1);
-
-            #endregion
-
-            Memory.SetMemoryToDefault();
-
-            //
-            // 
-
-
-            var ManualProgram = new CpuProgram();
-            ManualProgram.AllCommands = new List<CpuCommand>();
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KBD 0:0A"));
-            ManualProgram.AllCommands.Add(QueryCpuCommand.FromText("QUERY *:** FOR `PASS"));
-            ManualProgram.AllCommands.Add(new SeekCpuCommand{Target=new VariableTarget{Number = "Index"},Amount = new LiteralTarget{Value = "1"}});
-
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT @Index M:0B"));
-            ManualProgram.AllCommands.Add(new AssertCpuCommand("0:0A", "XM:0B"));
-
-            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KB M:2C"));
-
-            //ManualProgram.AllCommands.Add(new AssertCpuCommand
-            //{
-            //    CompareLeft = MediaTarget.FromText("M:2C"),
-            //    CompareRight = MediaTarget.FromText("0:0,0")
-            //});
-
-            AddProcess("Login.exe", new Process
-            {
-                Memory = Memory,
-                Source = ManualProgram,
-                Prompt = "Please enter your password",
-                Instruction = "^ Can't remember your password? Try 'Password'."
-
-            });
-
-            this.Hints.Add(new Hint
-            {
-                Title = "What am I looking at?",
-                Body = "In this scenario, some memory addresses are prefixed with X. This indicates that the value in memory at that location should be treated as a MEMORY ADDRESS to go fetch the value from."
-            });
-
-            this.Hints.Add(new Hint
-            {
-                Title = "The security is too tight! There's no way for me to get in and break this thing.",
-                Body = "Yea, it'd be better if you just had the password."
-            });
-
-            this.Hints.Add(new Hint
-            {
-                Title = "The password's in encrypted memory, I can't see it.",
-                Body = "Find a way to get the password OUT of encrypted memory."
-            });
-        }
-
-        public override bool IsAtWinCondition()
-        {
-            var winningLines = Printer.TextLines
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .FirstOrDefault(x => "ACCESS GRANTED" == x);
-
-            if (winningLines != null)
-                Console.WriteLine("Winning line: " + winningLines);
-            return winningLines != null;
-        }
-    }
-    public class SqlOpenSearchConstraint : Scenario
-    {
-        public override void Initialize()
-        {
-            var Memory = new AddressableRegion
-            {
-                SizeRows = 3,
-                SizeColumns = 4,
-            };
-            Memory.InitializeEmptyMemorySpace();
-
-
-
-            #region disk
-            var disk0 = new AddressableRegion();
-            disk0.VolumeName = "Keystore";
-            disk0.ReadOnly = true;
-            disk0.DriveId = 0;
-            disk0.SizeRows = 4;
-            disk0.SizeColumns = 4;
-            disk0.InitializeEmptyMemorySpace();
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 0 }, "~451");
-            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 0, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 0, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 2, Y = 0, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 3, Y = 0, DriveId = 0 }] = true;
-
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 0 }, "~451");
-            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 1, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 1, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 2, Y = 1, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 3, Y = 1, DriveId = 0 }] = true;
-
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 0 }, "~451");
-            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 2, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 2, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 2, Y = 2, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 3, Y = 2, DriveId = 0 }] = true;
-
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 3 }, "/*YOU");
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 1, Y = 3 }, "R KE");
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 2, Y = 3 }, "Y HE");
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 3, Y = 3 }, "RE*/");
-
-            disk0.SetMemoryToDefault();
-            Disks.Add(disk0);
-            #endregion
-
-
-            Memory.SetMemoryToDefault();
-
-            var ManualProgram = new CpuProgram();
-            ManualProgram.AllCommands = new List<CpuCommand>();
-
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KBD M:0A"));
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:0A @SEARCH_TEXT"));
-            ManualProgram.AllCommands.Add(QueryCpuCommand.FromText("QUERY 0:3* FOR @SEARCH_TEXT"));
-
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT @Index M:0B"));
-            ManualProgram.AllCommands.Add(new AssertCpuCommand("M:0A", "XM:0B"));
-
-
-            AddProcess("Login.exe", new Process
-            {
-                Memory = Memory,
-                Source = ManualProgram,
-                Prompt = "Please enter your password",
-                Instruction = "^ Can't remember your password? Try 'Password'."
-
-            });
-
-            this.Hints.Add(new Hint
-            {
-                Title = "What am I looking at?",
-                Body = "In this scenario, some memory addresses are prefixed with X. This indicates that the value in memory at that location should be treated as a MEMORY ADDRESS to go fetch the value from."
-            });
-
-            this.Hints.Add(new Hint
-            {
-                Title = "The security is too tight! There's no way for me to get in and break this thing.",
-                Body = "Yea, it'd be better if you just had the password."
-            });
-
-            this.Hints.Add(new Hint
-            {
-                Title = "The password's in encrypted memory, I can't see it.",
-                Body = "Find a way to get the password OUT of encrypted memory."
-            });
-        }
-
-        public override bool IsAtWinCondition()
-        {
-            var winningLines = Printer.TextLines
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .FirstOrDefault(x => "ACCESS GRANTED" == x);
-
-            if (winningLines != null)
-                Console.WriteLine("Winning line: " + winningLines);
-            return winningLines != null;
-        }
-    }
-
-    public class SqlReplaceEntireQuery : Scenario
-    {
-        public override void Initialize()
-        {
-            var Memory = new AddressableRegion
-            {
-                SizeRows = 2,
-                SizeColumns = 4,
-            };
-            Memory.InitializeEmptyMemorySpace();
-
-
-
-            #region disk
-            var disk0 = new AddressableRegion();
-            disk0.VolumeName = "Keystore";
-            disk0.ReadOnly = true;
-            disk0.DriveId = 0;
-            disk0.SizeRows = 3;
-            disk0.SizeColumns = 4;
-            disk0.InitializeEmptyMemorySpace();
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 0 }, "~451");
-            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 0, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 0, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 2, Y = 0, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 3, Y = 0, DriveId = 0 }] = true;
-
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 1 }, "~451");
-            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 1, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 1, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 2, Y = 1, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 3, Y = 1, DriveId = 0 }] = true;
-
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 2 }, "~451");
-            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 2, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 2, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 2, Y = 2, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 3, Y = 2, DriveId = 0 }] = true;
-
-            disk0.SetMemoryToDefault();
-            Disks.Add(disk0);
-            #endregion
-
-
-            var disk1 = new AddressableRegion
-            {
-                VolumeName = "QUERY_BUILDER",
-                ReadOnly = false,
-                DriveId = 1,
-                SizeRows = 2,
-                SizeColumns = 4
-            };
-            disk1.InitializeEmptyMemorySpace();
-            disk1.SetDefault(MemoryCoordinate.FromText("1:0A"),"QUER" );
-            disk1.SetDefault(MemoryCoordinate.FromText("1:1A"), "Y ");
-            disk1.SetDefault(MemoryCoordinate.FromText("1:2A"), "0:3*");
-            disk1.SetDefault(MemoryCoordinate.FromText("1:3A"), " FOR");
-            disk1.SetDefault(MemoryCoordinate.FromText("1:0B"), "   `");
-            
-            disk1.SetMemoryToDefault();
-            Disks.Add(disk1);
-
-
-
-            Memory.SetMemoryToDefault();
-
-            var ManualProgram = new CpuProgram();
-            
-            ManualProgram.AllCommands = new List<CpuCommand>();
-            
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KBD 1:1B"));
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT `QUER 1:0A "));
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT `Y 1:1A  "));
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT @StartLiteral 1:0B "));
-
-            ManualProgram.AllCommands.Add(ExecCpuCommand.FromText("EXEC 1:**"));
-
-            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:0A @SEARCH_TEXT"));
-            //ManualProgram.AllCommands.Add(QueryCpuCommand.FromText("QUERY 0:3* FOR @SEARCH_TEXT"));
-
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT @Index M:0B"));
-            ManualProgram.AllCommands.Add(new AssertCpuCommand("1:1B", "XM:0B"));
-
-
-
-            AddProcess("Login.exe", new Process
-            {
-                Memory = Memory,
-                Source = ManualProgram,
-                Prompt = "Please enter your password",
-                Instruction = "^ Can't remember your password? Try 'Password'."
-
-            });
-
-            this.Hints.Add(new Hint
-            {
-                Title = "What am I looking at?",
-                Body = "In this scenario, some memory addresses are prefixed with X. This indicates that the value in memory at that location should be treated as a MEMORY ADDRESS to go fetch the value from."
-            });
-
-            this.Hints.Add(new Hint
-            {
-                Title = "The security is too tight! There's no way for me to get in and break this thing.",
-                Body = "Yea, it'd be better if you just had the password."
-            });
-
-            this.Hints.Add(new Hint
-            {
-                Title = "The password's in encrypted memory, I can't see it.",
-                Body = "Find a way to get the password OUT of encrypted memory."
-            });
-        }
-
-        public override bool IsAtWinCondition()
-        {
-            var winningLines = Printer.TextLines
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .FirstOrDefault(x => "ACCESS GRANTED" == x);
-
-            if (winningLines != null)
-                Console.WriteLine("Winning line: " + winningLines);
-            return winningLines != null;
-        }
-    }
-
     public class SqlScenario3 : Scenario
     {
-        public override void Initialize()
+        public SqlScenario3(HttpClient httpClient) : base(httpClient, "scenarioName")
         {
+        }
+
+        public override async Task Initialize()
+        {
+            await base.Initialize();
+
             var Memory = new AddressableRegion
             {
                 SizeRows = 2,
@@ -1230,358 +806,6 @@ namespace GameLogic
 
     //}
 
-    public class ExploitNextAddressCheck : Scenario
-    {
-        public ExploitNextAddressCheck(HttpClient client) : base(client,"9_exploit_next_address")
-        {
-
-        }
-
-        public override void Initialize()
-        {
-            var Memory = new AddressableRegion
-            {
-                SizeRows = 2,
-                SizeColumns = 4,
-            };
-            Memory.InitializeEmptyMemorySpace();
-
-
-
-            #region disk
-            var disk0 = new AddressableRegion();
-            disk0.VolumeName = "Keystore";
-            disk0.ReadOnly = true;
-            disk0.DriveId = 0;
-            disk0.SizeRows = 5;
-            disk0.SizeColumns = 3;
-            disk0.InitializeEmptyMemorySpace();
-
-            //disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 0 }, "USER");
-            //disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 1, Y = 0 }, "PASS");
-            //disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 2, Y = 0 }, "XXXX");
-
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 0 }, "USR1");
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 1, Y = 0 }, "0451");
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 2, Y = 0 }, "HIGH");
-            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 0, DriveId = 0 }] = false;
-            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 0, DriveId = 0 }] = true;
-
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 1 }, "USR2");
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 1, Y = 1 }, "0451");
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 2, Y = 1 }, "HIGH");
-            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 1, DriveId = 0 }] = false;
-            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 1, DriveId = 0 }] = true;
-
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 2 }, "USR3");
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 1, Y = 2 }, "0451");
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 2, Y = 2 }, "LOW ");
-            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 2, DriveId = 0 }] = false;
-            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 2, DriveId = 0 }] = true;
-
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 3 }, "USR4");
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 1, Y = 3 }, "0451");
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 2, Y = 3 }, "LOW ");
-            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 3, DriveId = 0 }] = false;
-            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 3, DriveId = 0 }] = true;
-
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 4 }, "USR5");
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 1, Y = 4 }, "0451");
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 2, Y = 4 }, "LOW ");
-            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 4, DriveId = 0 }] = false;
-            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 4, DriveId = 0 }] = true;
-
-            disk0.SetMemoryToDefault();
-            Disks.Add(disk0);
-            #endregion
-
-
-            var disk1 = new AddressableRegion
-            {
-                VolumeName = "SWAP_DRIVE",
-                ReadOnly = false,
-                DriveId = 1,
-                SizeRows = 2,
-                SizeColumns = 4
-            };
-            disk1.InitializeEmptyMemorySpace();
-            disk1.SetDefault(MemoryCoordinate.FromText("1:0A"), "ACCE");
-            disk1.SetDefault(MemoryCoordinate.FromText("1:1A"), "SS G");
-            disk1.SetDefault(MemoryCoordinate.FromText("1:2A"), "RANT");
-            disk1.SetDefault(MemoryCoordinate.FromText("1:3A"), "ED  ");
-            disk1.SetDefault(MemoryCoordinate.FromText("1:0B"), "----");
-            disk1.SetDefault(MemoryCoordinate.FromText("1:1B"), "    ");
-            disk1.SetDefault(MemoryCoordinate.FromText("1:2B"), "SEC:");
-            disk1.SetDefault(MemoryCoordinate.FromText("1:3B"), "----");
-
-            disk1.SetMemoryToDefault();
-            Disks.Add(disk1);
-
-
-            var disk2 = new AddressableRegion
-            {
-                VolumeName = "QUERY_BUILDER",
-                ReadOnly = false,
-                DriveId = 2,
-                SizeRows = 2,
-                SizeColumns = 4
-            };
-            disk2.InitializeEmptyMemorySpace();
-            disk2.SetDefault(MemoryCoordinate.FromText("2:0A"), "QUER");
-            disk2.SetDefault(MemoryCoordinate.FromText("2:1A"), "Y ");
-            disk2.SetDefault(MemoryCoordinate.FromText("2:2A"), "0:**");
-            disk2.SetDefault(MemoryCoordinate.FromText("2:3A"), " FOR");
-            disk2.SetDefault(MemoryCoordinate.FromText("2:0B"), " @USR");
-            disk2.SetDefault(MemoryCoordinate.FromText("2:1B"), "/@PWD");
-
-            disk2.SetMemoryToDefault();
-            Disks.Add(disk2);
-
-            Memory.SetMemoryToDefault();
-
-            var ManualProgram = new CpuProgram();
-            ManualProgram.AllCommands = new List<CpuCommand>();
-
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KBD M:0A"));
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:0A @USR"));
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:1A @PWD"));
-
-            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:0A 2:1B"));
-
-            //ManualProgram.AllCommands.Add(ExecCpuCommand.FromText("EXEC 2:**"));
-            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT @Index 1:1A"));
-            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT X1:1A @U"));
-
-            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:1A 2:1B"));
-            ManualProgram.AllCommands.Add(ExecCpuCommand.FromText("EXEC 2:**"));
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT @Index 1:0B"));
-            ManualProgram.AllCommands.Add(new SeekCpuCommand()
-            {
-                Amount = new LiteralTarget{Value="2"},
-                Target = new VariableTarget{Number = "Index"}
-            });
-
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT @Index 1:3B"));
-
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT X1:0B 1:0B"));
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT X1:3B 1:3B"));
-            ManualProgram.AllCommands.Add(new DumpCommand()
-            {
-                From = new SearchConstraints
-                {
-                    DriveConstraint = 1
-                },
-                Target = new PrinterTarget()
-            });
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT `| PRINT"));
-
-            //ManualProgram.AllCommands.Add(new SeekCpuCommand
-            //    {
-            //        Amount = Target.ResolveTarget("1:0A"),
-            //        Target = Target.ResolveTarget("1:1A")
-            //    }
-            //);
-
-            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT X1:1A @P"));
-
-            //ManualProgram.AllCommands.Add(new AssertCpuCommand
-            //{
-            //    Assertions = new List<Assertion>
-            //    {
-            //        new Assertion {CompareRight = Target.ResolveTarget("@U"), CompareLeft = Target.ResolveTarget("M:0A")},
-            //       new Assertion {CompareRight = Target.ResolveTarget("@P"), CompareLeft = Target.ResolveTarget("M:1A")}
-            //    }
-
-            //});
-
-            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT `0 1:0A"));
-
-            //ManualProgram.AllCommands.Add(new SeekCpuCommand
-            //    {
-            //        Amount = new LiteralTarget { Value = "1" },
-            //        Target = Target.ResolveTarget("1:0A")
-            //    }
-            //);
-
-
-            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT 2:1A 1:1A"));
-            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT 2:2A 1:2A"));
-            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT 2:3A 1:3A"));
-            ////ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT 2:0B 1:0B"));
-
-            //ManualProgram.AllCommands.Add(ExecCpuCommand.FromText("EXEC 1:**"));
-
-            ////ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:0A @SEARCH_TEXT"));
-            ////ManualProgram.AllCommands.Add(QueryCpuCommand.FromText("QUERY 0:3* FOR @SEARCH_TEXT"));
-
-            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT @Index M:0B"));
-
-
-
-
-            AddProcess("Login.exe", new Process
-            {
-                Memory = Memory,
-                Source = ManualProgram,
-                Prompt = "Please enter your password",
-                Instruction = "^ Can't remember your password? Try 'Password'."
-
-            });
-
-
-        }
-
-        public override bool IsAtWinCondition()
-        {
-            var winningLines = Printer.TextLines
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .FirstOrDefault(x => "ACCESS GRANTED USR2 SEC:HIGH" == x || "ACCESS GRANTED USR1 SEC:HIGH" == x);
-
-
-            if (winningLines != null)
-                Console.WriteLine("Winning line: " + winningLines);
-            return winningLines != null;
-        }
-    }
-
-
-    public class SqlForUsingMemoryAddress : Scenario
-    {
-        public override void Initialize()
-        {
-            var Memory = new AddressableRegion
-            {
-                SizeRows = 2,
-                SizeColumns = 4,
-            };
-            Memory.InitializeEmptyMemorySpace();
-
-
-
-            #region disk
-            var disk0 = new AddressableRegion();
-            disk0.VolumeName = "Keystore";
-            disk0.ReadOnly = true;
-            disk0.DriveId = 0;
-            disk0.SizeRows = 3;
-            disk0.SizeColumns = 4;
-            disk0.InitializeEmptyMemorySpace();
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 0 }, "~451");
-            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 0, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 0, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 2, Y = 0, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 3, Y = 0, DriveId = 0 }] = true;
-
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 1 }, "~451");
-            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 1, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 1, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 2, Y = 1, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 3, Y = 1, DriveId = 0 }] = true;
-
-            disk0.SetDefault(new MemoryCoordinate { DriveId = 0, X = 0, Y = 2 }, "~451");
-            disk0.EncryptionState[new MemoryCoordinate { X = 0, Y = 2, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 1, Y = 2, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 2, Y = 2, DriveId = 0 }] = true;
-            disk0.EncryptionState[new MemoryCoordinate { X = 3, Y = 2, DriveId = 0 }] = true;
-
-            disk0.SetMemoryToDefault();
-            Disks.Add(disk0);
-            #endregion
-
-
-            var disk1 = new AddressableRegion
-            {
-                VolumeName = "QUERY_BUILDER",
-                ReadOnly = false,
-                DriveId = 1,
-                SizeRows = 2,
-                SizeColumns = 4
-            };
-            disk1.InitializeEmptyMemorySpace();
-            disk1.SetDefault(MemoryCoordinate.FromText("1:0A"), "QUER");
-            disk1.SetDefault(MemoryCoordinate.FromText("1:1A"), "Y ");
-            disk1.SetDefault(MemoryCoordinate.FromText("1:2A"), "0:3*");
-            disk1.SetDefault(MemoryCoordinate.FromText("1:3A"), " FOR");
-            disk1.SetDefault(MemoryCoordinate.FromText("1:0B"), "   `");
-
-            disk1.SetMemoryToDefault();
-            Disks.Add(disk1);
-
-
-            var disk2 = new AddressableRegion
-            {
-                VolumeName = "QUERY_TEMPLATE",
-                ReadOnly = false,
-                DriveId = 2,
-                SizeRows = 2,
-                SizeColumns = 4
-            };
-            disk2.InitializeEmptyMemorySpace();
-            disk2.SetDefault(MemoryCoordinate.FromText("2:0A"), "QUER");
-            disk2.SetDefault(MemoryCoordinate.FromText("2:1A"), "Y ");
-            disk2.SetDefault(MemoryCoordinate.FromText("2:2A"), "0:3*");
-            disk2.SetDefault(MemoryCoordinate.FromText("2:3A"), " FOR");
-            disk2.SetDefault(MemoryCoordinate.FromText("2:0B"), "   `");
-
-            disk2.SetMemoryToDefault();
-            Disks.Add(disk2);
-
-            Memory.SetMemoryToDefault();
-
-            var ManualProgram = new CpuProgram();
-            ManualProgram.AllCommands = new List<CpuCommand>();
-
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KBD 1:1B"));
-
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT 2:0A 1:0A"));
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT 2:1A 1:1A"));
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT 2:2A 1:2A"));
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT 2:3A 1:3A"));
-            ManualProgram.AllCommands.Add(ExecCpuCommand.FromText("EXEC 1:**"));
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT @Index M:0B"));
-            ManualProgram.AllCommands.Add(new AssertCpuCommand("M:0A", "XM:0B"));
-
-            AddProcess("Login.exe", new Process
-            {
-                Memory = Memory,
-                Source = ManualProgram,
-                Prompt = "Please enter your password",
-                Instruction = "^ Can't remember your password? Try 'Password'."
-
-            });
-
-            this.Hints.Add(new Hint
-            {
-                Title = "What am I looking at?",
-                Body = "In this scenario, some memory addresses are prefixed with X. This indicates that the value in memory at that location should be treated as a MEMORY ADDRESS to go fetch the value from."
-            });
-
-            this.Hints.Add(new Hint
-            {
-                Title = "The security is too tight! There's no way for me to get in and break this thing.",
-                Body = "Yea, it'd be better if you just had the password."
-            });
-
-            this.Hints.Add(new Hint
-            {
-                Title = "The password's in encrypted memory, I can't see it.",
-                Body = "Find a way to get the password OUT of encrypted memory."
-            });
-        }
-
-        public override bool IsAtWinCondition()
-        {
-            var winningLines = Printer.TextLines
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .FirstOrDefault(x => "ACCESS GRANTED" == x);
-
-            if (winningLines != null)
-                Console.WriteLine("Winning line: " + winningLines);
-            return winningLines != null;
-        }
-    }
-
-
 
     public class DereferencingScenario : Scenario
     {
@@ -1590,8 +814,10 @@ namespace GameLogic
 
         }
 
-        public override void Initialize()
+        public override async Task Initialize()
         {
+            await base.Initialize();
+
             var Memory = new AddressableRegion
             {
                 SizeRows = 3,
@@ -1675,198 +901,12 @@ namespace GameLogic
 
             //ManualProgram.AllCommands.Add(new AssertCpuCommand("M:2C", "0:0,0"));
 
-            AddProcess("Login.exe", new Process
-            {
-                Memory = Memory, 
-                Source = ManualProgram,
-                Prompt = "Please enter your password",
-                Instruction = "^ Can't remember your password? Try 'Password'."
-
-            });
-
-            this.Hints.Add(new Hint
-            {
-                Title = "What am I looking at?",
-                Body = "In this scenario, some memory addresses are prefixed with X. This indicates that the value in memory at that location should be treated as a MEMORY ADDRESS to go fetch the value from."
-            });
-
-            this.Hints.Add(new Hint
-            {
-                Title = "The security is too tight! There's no way for me to get in and break this thing.",
-                Body = "Yea, it'd be better if you just had the password."
-            });
-
-            this.Hints.Add(new Hint
-            {
-                Title = "The password's in encrypted memory, I can't see it.",
-                Body = "Find a way to get the password OUT of encrypted memory."
-            });
-        }
-
-        public override bool IsAtWinCondition()
-        {
-            var winningLines = Printer.TextLines
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .FirstOrDefault(x => "ACCESS GRANTED" == x);
-
-            if (winningLines != null)
-                Console.WriteLine("Winning line: " + winningLines);
-            return winningLines != null;
-        }
-    }
-
-
-    public class WhatsThePasswordScenario : Scenario
-    {
-        public WhatsThePasswordScenario(HttpClient client) : base(client, "2_whats_the_password")
-        {
-
-        }
-
-        public override void Initialize()
-        {
-            NextScenario = "Scenario3";
-
-var Memory = new AddressableRegion
-            {
-                SizeRows = 3,
-                SizeColumns = 4,
-            };
-            Memory.InitializeEmptyMemorySpace();
-
-            
-            Memory.SetDefault(new MemoryCoordinate { X = 0, Y = 1 }, "NOTH");
-            Memory.SetDefault(new MemoryCoordinate { X = 1, Y = 1 }, "ING ");
-            Memory.SetDefault(new MemoryCoordinate { X = 2, Y = 1 }, "TO  ");
-
-            Memory.SetDefault(new MemoryCoordinate { X = 0, Y = 2 }, "SEE ");
-            Memory.SetDefault(new MemoryCoordinate { X = 1, Y = 2 }, "HERE");
-
-
-            Memory.SetDefault(new MemoryCoordinate { X = 3, Y = 2 }, "0x51");
-            Memory.EncryptionState[new MemoryCoordinate {X = 3, Y = 2}] = true;
-
-            Memory.SetMemoryToDefault();
-
-
-            var ManualProgram = new CpuProgram();
-            ManualProgram.AllCommands = new List<CpuCommand>();
-            ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KB M:0,0"));
-
-            ManualProgram.AllCommands.Add(new AssertCpuCommand("M:0,0", "M:3,2"));
-
-            AddProcess("Login.exe", new Process { Memory = Memory, Source = ManualProgram,
-                Prompt = "Please enter your pin number.",
-                Instruction = "^ Can't remember your pin number? Try '1234'. That's what I use for my luggage."
-            });
-
-            this.Hints.Add(new Hint
-            {
-                Title = "What am I looking at?",
-                Body = "See those red asterisks? That tells you that the memory is *encrypted*. The 'ASSERT' CPU instruction is comparing the encrypted data to your entered data."
-            });
-
-            this.Hints.Add(new Hint
-            {
-                Title = "How can I decrypt the contents of the memory?",
-                Body = "You can't. Your goal is to get the 'ASSERT' to pass, not to figure out what the actual password is."
-            });
-
-            this.Hints.Add(new Hint
-            {
-                Title = "How can I get the ASSERT to match if I don't know what the actual password is?",
-                Body = "You'd need to have control over both values being compared."
-            });
-
-            this.Hints.Add(new Hint
-            {
-                Title = "How do I get control over both values being compared.",
-                Body = "You already have half of it by entering a 4 digit password. You need to overrun the contents of the buffer such that the value in memory coordinate M:0A matches the value in memory coordinate M:3C to pass the command 'ASSERT M:0A M:3C PRINT'"
-            });
-
-            this.Hints.Add(new Hint
-            {
-                Title = "Just spoil it already",
-                Body = "Enter a 48 character string where the first four characters match the last characters."
-            });
-
-        }
-
-        public override bool IsAtWinCondition()
-        {
-            var winningLines = Printer.TextLines
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .FirstOrDefault(x => "ACCESS GRANTED" == x);
-
-            if (winningLines != null)
-                Console.WriteLine("Winning line: " + winningLines);
-            return winningLines != null;
-        }
-    }
-
-
-
-
-    public class HelloWorldScenario : Scenario
-    {
-        
-        public HelloWorldScenario(HttpClient httpClient) : base(httpClient, "1_hello_world")
-        {
-
-        }
-
-        public override void Initialize()
-        {
-            NextScenario = "Scenario2";
-
-            base.Initialize();
-
-            //var Memory = new AddressableRegion
-            //{
-            //    SizeRows = 3,
-            //    SizeColumns = 4,
-            //};
-            //Memory.InitializeEmptyMemorySpace();
-
-            //Memory.SetDefault(new MemoryCoordinate { X = 0, Y = 1 }, "HELL");
-            //Memory.SetDefault(new MemoryCoordinate { X = 1, Y = 1 }, "O, WO");
-            //Memory.SetDefault(new MemoryCoordinate { X = 2, Y = 1 }, "RLD|");
-
-            //Memory.SetMemoryToDefault();
-
-            //var ManualProgram = new CpuProgram();
-            //ManualProgram.AllCommands = new List<CpuCommand>();
-            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KB M:0,0"));
-            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:0,1 PRINT"));
-            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:1,1 PRINT"));
-            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT M:2,1 PRINT"));
-
-            //this.Hints.Add(new Hint
-            //{
-            //    Title = "What am I looking at?",
-            //    Body = "This program places your number input into memory using the PUT instruction. It then PUTs 'hello world', which is stored at a later address, to your display output. You cannot modify the CPU instructions, so you must find another way to alter the control flow of the program.",
-            //    InterfaceHelpLink = true
-
-            //});
-
-            //this.Hints.Add(new Hint
-            //{
-            //    Title = "BUG REPORT 001",
-            //    Body = "Did you try entering 11? Doesn't seem like it's actually restricting numbers to 1-10."
-            //});
-
-            //this.Hints.Add(new Hint
-            //{
-            //    Title = "BUG REPORT 002",
-            //    Body = "Addendum to report #1, it looks like the field is not restricted to numbers. I was able to enter the word 'HOTDOG'"
-            //});
-
-            //AddProcess("hello_word.exe", new Process
+            //AddProcess("Login.exe", new Process
             //{
             //    Memory = Memory, 
             //    Source = ManualProgram,
-            //    Prompt = "What's your favorite number between 1 and 10?",
-            //    Instruction = "^ Please answer truthfully. This program knows when you're lying."
+            //    Prompt = "Please enter your password",
+            //    Instruction = "^ Can't remember your password? Try 'Password'."
 
             //});
 
@@ -1876,10 +916,10 @@ var Memory = new AddressableRegion
         {
             var winningLines = Printer.TextLines
                 .Where(x => !string.IsNullOrWhiteSpace(x))
-                .FirstOrDefault(x => "HELLO, WORLD" != x);
+                .FirstOrDefault(x => "ACCESS GRANTED" == x);
 
             if (winningLines != null)
-            Console.WriteLine("Winning line: "+winningLines);
+                Console.WriteLine("Winning line: " + winningLines);
             return winningLines != null;
         }
     }

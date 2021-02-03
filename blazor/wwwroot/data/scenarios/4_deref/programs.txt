@@ -1,0 +1,17 @@
+﻿=metadata=
+prompt:Please enter your password
+instruction:^ Can't remember your password? Try 'Password'.
+name:login.exe
+
+=memory=
+3x4:
+MSG ,1:0A,1:1A,1:2A
+NOTH,ING ,TO  ,
+SEE ,HERE,    ,
+
+=source=
+PUT XM:1A PRINT
+PUT XM:2A PRINT
+PUT XM:3A PRINT
+PUT KB M:2C
+TEST M:2C 0:0,0

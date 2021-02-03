@@ -1,0 +1,13 @@
+﻿=metadata=
+prompt:What's your favorite number between 1 and 10?
+instruction:^ Please answer truthfully. This program knows when you're lying.
+name:hello_world.exe
+
+=memory=
+3x4:HELLO, WORLD|
+
+=source=
+PUT KB M:0,0
+PUT M:0,1 PRINT
+PUT M:1,1 PRINT
+PUT M:2,1 PRINT

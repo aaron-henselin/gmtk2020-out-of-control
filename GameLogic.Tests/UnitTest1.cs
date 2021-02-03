@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using gmtk2020_blazor.Models.Cpu;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -7,10 +8,10 @@ namespace GameLogic.Tests
     public class UnitTest1
     {
         [TestMethod]
-        public void Sc6()
+        public async Task Sc6()
         {
             var scenario1 = new SqlReplaceEntireQuery();
-            scenario1.Initialize();
+            await scenario1.Initialize();
             scenario1.KeyboardInput = new KeyboardInput {Text = "test"};
             var loginExe = scenario1.Processes["Login.exe"];
             var context = new CpuCommandContext {Scenario = scenario1};
@@ -37,10 +38,10 @@ namespace GameLogic.Tests
         }
 
         [TestMethod]
-        public void PadsWhenNotDivisibleBy4()
+        public async Task PadsWhenNotDivisibleBy4()
         {
             var scenario = new DereferencingScenario();
-            scenario.Initialize();
+            await scenario.Initialize();
 
             scenario.KeyboardInput.Text = "111111110:0A";
 

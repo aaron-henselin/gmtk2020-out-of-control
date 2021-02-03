@@ -1,0 +1,15 @@
+﻿title:What am I looking at?
+body:See those red asterisks? That tells you that the memory is *encrypted*. The 'ASSERT' CPU instruction is comparing the encrypted data to your entered data.
+--
+title:How can I decrypt the contents of the memory?
+body:You can't. Your goal is to get the 'ASSERT' to pass, not to figure out what the actual password is.
+--
+title:How can I get the ASSERT to match if I don't know what the actual password is?
+body:You'd need to have control over both values being compared.
+--
+title:How do I get control over both values being compared.
+body:You already have half of it by entering a 4 digit password. You need to overrun the contents of the buffer such that the value in memory coordinate M:0A matches the value in memory coordinate M:3C to pass the command 'ASSERT M:0A M:3C PRINT'
+--
+title:Just spoil it already
+body:Enter a 48 character string where the first four characters match the last characters.
+   

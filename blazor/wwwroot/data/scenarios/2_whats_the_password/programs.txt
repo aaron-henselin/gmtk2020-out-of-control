@@ -1,0 +1,15 @@
+﻿=metadata=
+name:login.exe
+prompt:Please enter your pin number.
+instruction:^ Can't remember your pin number? Try '1234'. That's what I use for my luggage.
+
+=memory=
+3x4:
+NOTH,ING ,TO , 
+SEE ,HERE,   ,#0x51
+    ,    ,   ,
+
+=source=
+PUT KB M:0,0
+TEST M:0,0 M:3,2
+

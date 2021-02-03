@@ -1,0 +1,11 @@
+﻿Title:I can't modify the memory address I want to!
+Body:If you can't go backwards, try going forwards.
+--
+Title:That didn't help me because even if I could get to the memory, there's no password in memory to read or write to.
+Body:Read the win criteria again.
+--
+Title:Stop with the mind-games already.
+Body:Your goal is not to pass an ASSERT. Your goal is to get the text 'ACCESS GRANTED' to output to the display.
+--
+Title:How do I do that?
+Body:The program prints out a helpful progress message to let you know that it's checking your password. Take advantage of it.

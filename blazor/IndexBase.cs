@@ -173,9 +173,9 @@ namespace gmtk2020_blazor
 
         }
 
-        protected override void OnParametersSet()
+        protected override async Task OnParametersSetAsync()
         {
-            Scenario.Initialize(HttpClient,ScenarioName);
+            await Scenario.Initialize();
 
             if (string.IsNullOrWhiteSpace(ViewportProcessName))
             {

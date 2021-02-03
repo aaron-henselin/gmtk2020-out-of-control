@@ -1,0 +1,20 @@
+﻿=metadata=
+prompt:Please enter your 4 character pin number to manage the camera feed.
+instruction:^ Note: pin number 'HOTDOG' has been disabled due to it not being 4 characters, or a number.
+name:login.exe
+
+=memory=
+3x4:
+VALI,DATI,NG  ,
+PASS,WORD,|   ,
+    ,    ,    ,#0x51
+
+=source=
+PUT M:0A PRINT
+PUT M:1A PRINT
+PUT M:2A PRINT
+PUT M:0B PRINT
+PUT M:1B PRINT
+PUT M:2B PRINT
+PUT KB M:0C
+TEST M:0 0:0,0

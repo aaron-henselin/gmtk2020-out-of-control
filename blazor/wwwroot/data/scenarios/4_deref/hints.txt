@@ -1,0 +1,8 @@
+﻿Title: = "What am I looking at?",
+Body: = "In this scenario, some memory addresses are prefixed with X. This indicates that the value in memory at that location should be treated as a MEMORY ADDRESS to go fetch the value from."
+--
+Title: = "The security is too tight! There's no way for me to get in and break this thing.",
+Body: = "Yea, it'd be better if you just had the password."
+--
+Title: = "The password's in encrypted memory, I can't see it.",
+Body: = "Find a way to get the password OUT of encrypted memory."

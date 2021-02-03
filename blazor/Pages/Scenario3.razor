@@ -1,4 +1,5 @@
 ﻿@page "/Scenario3"
+@using System.Net.Http
 @using GameLogic
 @using Microsoft.AspNetCore.Components.Web
 @inherits gmtk2020_blazor.IndexBase
@@ -38,18 +39,15 @@
 </div>
 
 
-
+@inject HttpClient httpClient
 @code {
-
-    @code {
 
         protected override void OnInitialized()
         {
             base.OnInitialized();
 
-            this.Scenario = new LateralThinkingScenario();
+            this.Scenario = new LateralThinkingScenario(httpClient);
         }
 
     }
 
-}

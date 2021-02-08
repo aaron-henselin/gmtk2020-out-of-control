@@ -8,40 +8,68 @@ using AddressableRegion = GameLogic.AddressableRegion;
 
 namespace gmtk2020_blazor.Models.Cpu
 {
-            
-        public class CpuCommandContext
+
+    public static class CpuCommandFactory
+    {
+        public static CpuCommand Build(string line)
         {
-            public Dictionary<string, string> Variables { get; set; } = new Dictionary<string, string>
-            {
-                ["StartLiteral"] = "   `"
+            var commandParts = line.Split(new []{" "}, StringSplitOptions.None);
+            var commandName = commandParts[0];
+            var isPut = string.Equals(commandName, "put", StringComparison.OrdinalIgnoreCase);
+            if (isPut)
+                return ReadCpuCommand.FromText(line);
 
-            };
+            var isQuery = string.Equals(commandName, "query", StringComparison.OrdinalIgnoreCase);
+            if (isQuery)
+                return QueryCpuCommand.FromText(line);
 
-            public Scenario Scenario { get; set; }
+            var isAssert = string.Equals(commandName, "test", StringComparison.OrdinalIgnoreCase);
+            if (isAssert)
+                return AssertCpuCommand.FromText(line);
+
+            var isSeek = string.Equals(commandName, "seek", StringComparison.OrdinalIgnoreCase);
+            if (isSeek)
+                return SeekCpuCommand.FromText(line);
+
+            throw new ArgumentException($"Unknown cpu command '{commandName}'");
+        }
+    }
+
+
+    public class CpuCommandContext
+    {
+        public Dictionary<string, string> Variables { get; set; } = new Dictionary<string, string>
+        {
+            ["StartLiteral"] = "   `"
+
+        };
+
+        public Scenario Scenario { get; set; }
+    }
+
+
+
+    public class CpuProgram
+    {
+        public List<CpuCommand> AllCommands { get; set; } = new List<CpuCommand>();
+        public void RunNextStep(Process process, int CurrentStep, CpuCommandContext context)
+        {
+
+
+            process.Memory.CoolOff();
+            foreach (var drive in context.Scenario.Disks)
+                drive.CoolOff();
+
+            var command = AllCommands[CurrentStep];
+            process.CpuLog.Log(CurrentStep + ": " + command.ToString());
+
+            command.Run(process, context);
+
+
         }
 
+    }
 
-
-        public class CpuProgram
-        {
-            public List<CpuCommand> AllCommands { get; set; } = new List<CpuCommand>();
-            public void RunNextStep(Process process, int CurrentStep, CpuCommandContext context)
-            {
-                
-               
-                process.Memory.CoolOff();
-                foreach (var drive in context.Scenario.Disks)
-                    drive.CoolOff();
-
-                var command = AllCommands[CurrentStep];
-                process.CpuLog.Log(CurrentStep + ": "+ command.ToString());
-
-                command.Run(process,context);
-               
-
-            }
-
-        }
 
     public abstract class CpuCommand
     {
@@ -67,14 +95,21 @@ namespace gmtk2020_blazor.Models.Cpu
 
         public AssertCpuCommand(Target left, Target right)
         {
-            Assertions = new List<Assertion>{new Assertion{CompareLeft = left,CompareRight = right}};
+            Assertions = new List<Assertion> { new Assertion { CompareLeft = left, CompareRight = right } };
         }
 
-        public AssertCpuCommand(string left, string right) :this(Target.ResolveTarget(left),Target.ResolveTarget(right))
+        public AssertCpuCommand(string left, string right) : this(Target.ResolveTarget(left), Target.ResolveTarget(right))
         {
-           
+
         }
 
+        public static AssertCpuCommand FromText(string line)
+        {
+            var testParts = line.Split(new []{' '}, StringSplitOptions.RemoveEmptyEntries);
+            var left = Target.ResolveTarget(testParts[1]);
+            var right =Target.ResolveTarget(testParts[2]);
+            return new AssertCpuCommand(left,right);
+        }
 
         public List<Assertion> Assertions { get; set; } = new List<Assertion>();
 
@@ -108,7 +143,7 @@ namespace gmtk2020_blazor.Models.Cpu
 
                     return match;
                 });
-            
+
             if (results.All(x => x))
             {
                 Console.Write($"TEST PASSED.");
@@ -148,7 +183,7 @@ namespace gmtk2020_blazor.Models.Cpu
     //    }
     //}
 
-   
+
 
     public abstract class Target
     {
@@ -208,7 +243,7 @@ namespace gmtk2020_blazor.Models.Cpu
         }
     }
 
-    public class MediaTarget :Target
+    public class MediaTarget : Target
     {
         public MemoryCoordinate Coordinate { get; set; }
 
@@ -303,7 +338,7 @@ namespace gmtk2020_blazor.Models.Cpu
         public override string ReadFromTarget(Process scenario, CpuCommandContext context)
         {
             var reference = ReferenceLocation.ReadFromTarget(scenario, context);
-            Console.WriteLine("DeRef Raw: "+reference);
+            Console.WriteLine("DeRef Raw: " + reference);
 
             var actualTarget = Target.ResolveTarget(reference);
             Console.WriteLine("DeRef Parsed: " + actualTarget);
@@ -318,7 +353,7 @@ namespace gmtk2020_blazor.Models.Cpu
         {
             var reference = ReferenceLocation.ReadFromTarget(scenario, context);
             var actualTarget = Target.ResolveTarget(reference);
-            actualTarget.WriteToTarget(scenario, input,context);
+            actualTarget.WriteToTarget(scenario, input, context);
         }
 
         internal static DeRefTarget FromText(string from)
@@ -336,7 +371,7 @@ namespace gmtk2020_blazor.Models.Cpu
         }
     }
 
-    public class VariableTarget :Target
+    public class VariableTarget : Target
     {
         public string Number { get; set; }
 
@@ -364,7 +399,7 @@ namespace gmtk2020_blazor.Models.Cpu
             //var parts = from.Split(new[] {':'});
             //variableTarget.Number = parts[1];
             //return variableTarget;
-            return new VariableTarget {Number = from.Substring(1)};
+            return new VariableTarget { Number = from.Substring(1) };
         }
     }
 
@@ -425,6 +460,19 @@ namespace gmtk2020_blazor.Models.Cpu
             return $"SEEK {Target} {Amount}";
         }
 
+        public static SeekCpuCommand FromText(string line)
+        {
+            var substring = line.Substring(5);
+            var parts = substring.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            var target = Target.ResolveTarget(parts[0]);
+            var amt = Target.ResolveTarget(parts[1]);
+            return new SeekCpuCommand
+            {
+                Target = target,
+                Amount = amt
+            };
+        }
+
         public override void Run(Process scenario, CpuCommandContext context)
         {
             var advanceAmountRaw = Amount.ReadFromTarget(scenario, context);
@@ -441,9 +489,9 @@ namespace gmtk2020_blazor.Models.Cpu
 
             var current = currentMediaTarget.Coordinate;
             for (int i = 0; i < advanceAmount; i++)
-                 current = region.NextAddress(current);
-            
-        
+                current = region.NextAddress(current);
+
+
             Target.WriteToTarget(scenario, current.ToString(), context);
         }
     }
@@ -478,12 +526,12 @@ namespace gmtk2020_blazor.Models.Cpu
 
             var dynamicQuery = QueryCpuCommand.FromText(fullText);
             scenario.CpuLog.Log("~:" + dynamicQuery.ToString());
-            dynamicQuery.Run(scenario,context);
+            dynamicQuery.Run(scenario, context);
         }
 
         public static ExecCpuCommand FromText(string text)
         {
-            var parts = text.Split(new[] {" "}, StringSplitOptions.RemoveEmptyEntries);
+            var parts = text.Split(new[] { " " }, StringSplitOptions.RemoveEmptyEntries);
 
             var constraints = GameLogic.SearchConstraints.ResolveTarget(parts[1]);
 
@@ -535,7 +583,7 @@ namespace gmtk2020_blazor.Models.Cpu
     public class QueryCpuCommand : CpuCommand
     {
         public SearchConstraints SearchConstraints { get; set; }
-    
+
         public QueryFor For { get; set; }
 
         public const string OutputVariableName = "@Index";
@@ -547,8 +595,8 @@ namespace gmtk2020_blazor.Models.Cpu
 
         public override void Run(Process scenario, CpuCommandContext context)
         {
-            var resolvedForExpression = For.GetSearchValues(scenario,context);
-            
+            var resolvedForExpression = For.GetSearchValues(scenario, context);
+
 
 
             var disks = context.Scenario.FindDisks(SearchConstraints);
@@ -562,7 +610,7 @@ namespace gmtk2020_blazor.Models.Cpu
                 return;
             }
 
-            
+
         }
 
         public static QueryCpuCommand FromText(string text)
@@ -572,14 +620,14 @@ namespace gmtk2020_blazor.Models.Cpu
             var forTargetsRaw = text.Substring(forAt + 4).Trim();
 
             var constraints = GameLogic.SearchConstraints.ResolveTarget(constraintsRaw);
-            
-           
+
+
             return new QueryCpuCommand
             {
                 For = new QueryFor(forTargetsRaw),
                 SearchConstraints = constraints
             };
-            
+
         }
 
     }
@@ -592,7 +640,7 @@ namespace gmtk2020_blazor.Models.Cpu
 
         public override string ToString()
         {
-            return "DUMP "+From + " "+Target;
+            return "DUMP " + From + " " + Target;
         }
 
         public override void Run(Process scenario, CpuCommandContext context)
@@ -605,7 +653,7 @@ namespace gmtk2020_blazor.Models.Cpu
                 foreach (var memoryCoordinate in coordinates)
                 {
                     var dumpVal = disk.Read(memoryCoordinate);
-                    Target.WriteToTarget(scenario,dumpVal,context);
+                    Target.WriteToTarget(scenario, dumpVal, context);
                 }
             }
 
@@ -628,7 +676,7 @@ namespace gmtk2020_blazor.Models.Cpu
         //}
     }
 
-    public class ReadCpuCommand :CpuCommand
+    public class ReadCpuCommand : CpuCommand
     {
         public Target From { get; set; }
         public Target To { get; set; }
@@ -640,16 +688,16 @@ namespace gmtk2020_blazor.Models.Cpu
 
         public override void Run(Process scenario, CpuCommandContext context)
         {
-            var value = From.ReadFromTarget(scenario,context);
-            To.WriteToTarget(scenario,value,context);
+            var value = From.ReadFromTarget(scenario, context);
+            To.WriteToTarget(scenario, value, context);
         }
 
         public static ReadCpuCommand FromText(string text)
         {
-           
+
 
             var substring = text.Substring(4);
-            var parts = substring.Split(new []{' '}, StringSplitOptions.RemoveEmptyEntries);
+            var parts = substring.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             var from = Target.ResolveTarget(parts[0]);
             var to = Target.ResolveTarget(parts[1]);
 

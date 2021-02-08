@@ -6,6 +6,35 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace GameLogic.Tests
 {
+    public class ScenarioPackageDeserializerTests
+    {
+        [TestClass]
+        public class Deserialize
+        {
+            private string testFile = @"
+                =metadata=
+                prompt:What's your favorite number between 1 and 10?
+                instruction:^ Please answer truthfully. This program knows when you're lying.
+                name:hello_world.exe
+
+                =memory=
+                3x4:HELLO, WORLD|
+
+                =source=
+                PUT KB M:0,0
+                PUT M:0,1 PRINT
+                PUT M:1,1 PRINT
+                PUT M:2,1 PRINT
+                ";
+
+            [TestMethod]
+            public void Succeeds()
+            {
+                ScenarioPackageDeserializer.Deserialize(testFile);
+            }
+        }
+    }
+
     [TestClass]
     public class FileReaderTests
     {
@@ -117,27 +146,6 @@ namespace GameLogic.Tests
                 Assert.AreEqual("test", defaultValue);
             }
         }
-
-        [TestClass]
-        public class ReadCpuCommandsTests
-        {
-
-            [TestMethod]
-            public void ReadsPutCommands()
-            {
-                var testFile = @"
-                    PUT KB M:0,0
-                    PUT M:0,1 PRINT
-                    PUT M:1,1 PRINT
-                    PUT M:2,1 PRINT
-                    ";
-                var lines =testFile.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
-                var arr = FileReader.ReadCpuCommands(lines);
-            }
-        }
-
-
-
         //[TestMethod]
         //public async Task Sc6()
         //{
@@ -186,6 +194,16 @@ namespace GameLogic.Tests
         //    process.Source.RunNextStep(process, 1, new CpuCommandContext { Scenario = scenario });
 
         //}
+    }
 
+    [TestClass]
+    public class CpuCommandFactoryTests
+    {
+        [TestMethod]
+        public void ReadsCommand()
+        {
+            var isReadCommand = CpuCommandFactory.Build("PUT KB M:0,0") is ReadCpuCommand readCpuCommand;
+            Assert.IsTrue(isReadCommand);
+        }
     }
 }

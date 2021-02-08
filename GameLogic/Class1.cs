@@ -366,8 +366,57 @@ namespace GameLogic
         public List<string> Lines { get; set; } = new List<string>();
     }
 
+    public static class ScenarioPackageDeserializer
+    {
+        public static ScenarioPackage Deserialize(string programsTxt)
+        {
+            var package = new ScenarioPackage();
+            var groups = FileReader.ReadArray(programsTxt);
+            foreach (var group in groups)
+            {
+
+                var sections = FileReader.ReadSections(group);
+
+
+                var metadataSection = sections["metadata"];
+                var programMetadata = FileReader.ReadDictionary(metadataSection.Lines);
+                var programName = programMetadata["name"];
+                var prompt = programMetadata["prompt"];
+                var instruction = programMetadata["instruction"];
+
+                var sourceSection = sections["source"];
+                var commands = FileReader.ReadCpuCommands(sourceSection.Lines);
+
+                var memorySection = sections["memory"];
+                var memory = FileReader.ReadAddressableRegion(memorySection.Lines);
+
+                package.Processes.Add(new ScenarioProcess
+                {
+                    Name = programName,
+                    Process = new Process
+                    {
+                        Memory = memory,
+                        Prompt = prompt,
+                        Instruction = instruction,
+                        Source = new CpuProgram
+                        {
+                            AllCommands = commands.ToList()
+                        }
+                    }
+                });
+
+
+
+            }
+
+            return package;
+
+        }
+    }
+
     public static class FileReader
     {
+        
 
         public static IReadOnlyCollection<CpuCommand> ReadCpuCommands(IReadOnlyCollection<string> strs)
         {
@@ -377,10 +426,14 @@ namespace GameLogic
             return commands;
         }
 
-        public static Dictionary<string,Section> ReadSections(string str)
+        public static Dictionary<string, Section> ReadSections(string str)
         {
             string[] lines = GetLines(str);
+            return ReadSections(lines);
+        }
 
+        public static Dictionary<string,Section> ReadSections(IReadOnlyCollection<string> lines)
+        {
             List<Section> groups = new List<Section> { };
             foreach (var line in lines)
             {
@@ -411,7 +464,7 @@ namespace GameLogic
             return lines;
         }
 
-        public static IEnumerable<IEnumerable<string>> ReadArray(string str)
+        public static IEnumerable<IReadOnlyCollection<string>> ReadArray(string str)
         {
             string[] lines = GetLines(str);
             List<List<string>> groups = new List<List<string>> { new List<string>() };
@@ -552,61 +605,26 @@ namespace GameLogic
 
         public async Task<ScenarioPackage> Download(string scenarioName)
         {
-            var package = new ScenarioPackage();
 
             var programsTxt = await _httpClient.GetStringAsync($"lib/scenarios/{scenarioName}/programs.txt");
-            var groups = FileReader.ReadArray(programsTxt);
-            foreach (var group in groups)
-            {
-                var programs_txt = await _httpClient.GetStringAsync($"lib/scenarios/{scenarioName}/programs.txt");
-                var sections = FileReader.ReadSections(programs_txt);
 
 
-                var metadataSection = sections["metadata"];
-                var programMetadata = FileReader.ReadDictionary(metadataSection.Lines);
-                var programName = programMetadata["name"];
-                var prompt = programMetadata["prompt"];
-                var instruction = programMetadata["instruction"];
+            //var hints_txt = await _httpClient.GetStringAsync($"/{scenarioName}/hints.txt");
+            //package.Hints = FileReader.ReadHints(hints_txt).ToList();
 
-                var sourceSection = sections["source"];
-                var commands = FileReader.ReadCpuCommands(sourceSection.Lines);
-
-                var memorySection = sections["memory"];
-                var memory = FileReader.ReadAddressableRegion(memorySection.Lines);
-
-                package.Processes.Add(new ScenarioProcess
-                {
-                    Name = programName,
-                    Process = new Process
-                    {
-                        Memory = memory,
-                        Prompt = prompt,
-                        Instruction = instruction,
-                        Source = new CpuProgram
-                        {
-                            AllCommands = commands.ToList()
-                        }
-                    }
-                });
-                
-
-                var hints_txt = await _httpClient.GetStringAsync($"/{scenarioName}/hints.txt");
-                package.Hints = FileReader.ReadHints(hints_txt).ToList();
-
-            }
-
-            return package;
+            return ScenarioPackageDeserializer.Deserialize(programsTxt);
         }
 
     }
 
     public abstract class Scenario
     {
-        private readonly ScenarioPackage scenarioPackage;
-
+        
         public Scenario(ScenarioPackage scenarioPackage)
         {
-            this.scenarioPackage = scenarioPackage;
+            foreach (var process in scenarioPackage.Processes)
+                this.Processes.Add(process.Name,process.Process);
+
         }
 
         public IReadOnlyCollection<AddressableRegion> FindDisks(SearchConstraints SearchConstraints)

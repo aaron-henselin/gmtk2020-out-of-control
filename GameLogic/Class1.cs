@@ -368,8 +368,10 @@ namespace GameLogic
 
     public static class ScenarioPackageDeserializer
     {
-        public static ScenarioPackage Deserialize(string programsTxt)
+        public static ScenarioPackage Deserialize(string programsTxt,string descriptionTxt)
         {
+
+
             var package = new ScenarioPackage();
             var groups = FileReader.ReadArray(programsTxt);
             foreach (var group in groups)
@@ -409,6 +411,15 @@ namespace GameLogic
 
             }
 
+            if (descriptionTxt != null)
+            {
+                var descriptionSections = FileReader.ReadSections(descriptionTxt);
+                var headerSection = descriptionSections["header"];
+                var descriptionSection = descriptionSections["description"];
+                package.Title = headerSection.Lines[0];
+                package.DescriptionLines = descriptionSection.Lines;
+            }
+            
             return package;
 
         }
@@ -586,6 +597,8 @@ namespace GameLogic
     {
         public List<ScenarioProcess> Processes { get; set; } = new List<ScenarioProcess>();
         public List<Hint> Hints { get; set; } = new List<Hint>();
+        public string Title { get; internal set; }
+        public List<string> DescriptionLines { get; internal set; }
     }
 
     public class ScenarioProcess 
@@ -607,12 +620,15 @@ namespace GameLogic
         {
 
             var programsTxt = await _httpClient.GetStringAsync($"lib/scenarios/{scenarioName}/programs.txt");
+            var descriptionTxt = await _httpClient.GetStringAsync($"lib/scenarios/{scenarioName}/description.txt");
 
 
             //var hints_txt = await _httpClient.GetStringAsync($"/{scenarioName}/hints.txt");
             //package.Hints = FileReader.ReadHints(hints_txt).ToList();
 
-            return ScenarioPackageDeserializer.Deserialize(programsTxt);
+            return ScenarioPackageDeserializer.Deserialize(
+                programsTxt, descriptionTxt
+                );
         }
 
     }
@@ -620,8 +636,12 @@ namespace GameLogic
     public abstract class Scenario
     {
         
+        
         public Scenario(ScenarioPackage scenarioPackage)
         {
+            Title = scenarioPackage.Title;
+            DescriptionLines = scenarioPackage.DescriptionLines;
+
             foreach (var process in scenarioPackage.Processes)
             {
                 var p = process.Process;
@@ -632,6 +652,10 @@ namespace GameLogic
 
 
         }
+
+        public List<string> DescriptionLines { get; set; }
+
+        public string Title { get; set; }
 
         public IReadOnlyCollection<AddressableRegion> FindDisks(SearchConstraints SearchConstraints)
         {

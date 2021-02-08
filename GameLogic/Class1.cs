@@ -368,6 +368,7 @@ namespace GameLogic
 
     public static class FileReader
     {
+
         public static IReadOnlyCollection<CpuCommand> ReadCpuCommands(IReadOnlyCollection<string> strs)
         {
             var commands = new List<CpuCommand>();
@@ -378,10 +379,8 @@ namespace GameLogic
 
         public static Dictionary<string,Section> ReadSections(string str)
         {
-            string[] lines = str.Split(
-                new[] { Environment.NewLine },
-                StringSplitOptions.None
-            );
+            string[] lines = GetLines(str);
+
             List<Section> groups = new List<Section> { };
             foreach (var line in lines)
             {
@@ -391,19 +390,30 @@ namespace GameLogic
                     var name = line.Substring(1, line.Length - 2);
                     groups.Add(new Section{Name = name});
                 }
-                groups[groups.Count - 1].Lines.Add(line);
+                else
+                    groups[groups.Count - 1].Lines.Add(line);
 
             }
 
             return groups.ToDictionary(x => x.Name,StringComparer.OrdinalIgnoreCase);
         }
 
-        public static IEnumerable<IEnumerable<string>> ReadArray(string str)
+        static string[] GetLines(string str)
         {
             string[] lines = str.Split(
-                new[] { Environment.NewLine },
-                StringSplitOptions.None
-            );
+                    new[] { Environment.NewLine },
+                    StringSplitOptions.None
+                )
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x.Trim())
+                .ToArray();
+
+            return lines;
+        }
+
+        public static IEnumerable<IEnumerable<string>> ReadArray(string str)
+        {
+            string[] lines = GetLines(str);
             List<List<string>> groups = new List<List<string>> { new List<string>() };
             foreach (var line in lines)
             {
@@ -419,7 +429,14 @@ namespace GameLogic
 
         public static KeyValuePair<string, string> ReadKvp(string line)
         {
+            var isEmpty = string.IsNullOrWhiteSpace(line);
+            if (isEmpty)
+                throw new ArgumentException("Argument cannot be empty");
+
             var index = line.IndexOf(':');
+            if (index == -1)
+                throw new ArgumentException($"'{line}' does not contain ':'");
+
             var left = line.Substring(0, index);
             var right = line.Substring(index + 1);
             return new KeyValuePair<string, string>(left, right);
@@ -429,6 +446,11 @@ namespace GameLogic
         {
             return Enumerable.Range(0, str.Length / chunkSize)
                 .Select(i => str.Substring(i * chunkSize, chunkSize));
+        }
+
+        public static IDictionary<string, string> ReadDictionary(Section section)
+        {
+            return ReadDictionary(section.Lines);
         }
 
         public static IDictionary<string, string> ReadDictionary(IEnumerable<string> lines)
@@ -469,7 +491,20 @@ namespace GameLogic
             }
             else
             {
-                lines.Skip(1);
+                var writeCoord = region.AllCoordinates.First();
+
+                var remainingLines = lines.Skip(1).Take(region.SizeRows);
+                foreach (var remainingLine in remainingLines)
+                {
+                    var chunks = remainingLine.Split(new[] {','}, StringSplitOptions.None);
+
+                    foreach (var chunk in chunks)
+                    {
+                        region.SetDefault(writeCoord, chunk);
+                        writeCoord = region.NextAddress(writeCoord);
+                    }
+
+                }
             }
 
             return region;

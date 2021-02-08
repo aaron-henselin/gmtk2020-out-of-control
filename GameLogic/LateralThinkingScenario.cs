@@ -11,9 +11,9 @@ namespace GameLogic
         {
         }
 
-        public override async Task Initialize()
+        public async Task Initialize()
         {
-            await base.Initialize();
+            //await base.Initialize();
 
             NextScenario = "Scenario4";
 
@@ -78,7 +78,7 @@ namespace GameLogic
 
             //ManualProgram.AllCommands.Add(new AssertCpuCommand("M:0C", "0:0,0"));
 
-            process.Source = ManualProgram;
+            //process.Source = ManualProgram;
             this.AddProcess("Login.exe",process);
 
 

@@ -41,12 +41,14 @@
 @code {
 
     @code {
-
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        base.OnInitialized();
+        await base.OnInitializedAsync();
 
-        this.Scenario = new ExploitNextAddressCheck();
+
+        
+        var package = await PackageDownloader.Download("9_exploit_next_address");
+        this.Scenario = new ExploitNextAddressCheck(package);
     }
 
     }

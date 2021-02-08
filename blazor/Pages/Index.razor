@@ -55,16 +55,16 @@
         </div>
 
 
-        @inject HttpClient httpClient
         @code {
 
 
-            protected override void OnInitialized()
+            protected override async Task OnInitializedAsync()
             {
-                base.OnInitialized();
+                await base.OnInitializedAsync();
 
 
-                this.Scenario = new HelloWorldScenario();
+                var package = await PackageDownloader.Download("1_hello_world");
+                this.Scenario = new HelloWorldScenario(package);
             }
 
         }

@@ -41,12 +41,14 @@
 @code {
 
     @code {
-
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        base.OnInitialized();
+        await base.OnInitializedAsync();
 
-        this.Scenario = new DereferencingScenario();
+
+        
+        var package = await PackageDownloader.Download("4_defref");
+        this.Scenario = new DereferencingScenario(package);
     }
 
     }

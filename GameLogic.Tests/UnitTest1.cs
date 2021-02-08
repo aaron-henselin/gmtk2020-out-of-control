@@ -11,7 +11,7 @@ namespace GameLogic.Tests
         public async Task Sc6()
         {
             var scenario1 = new SqlReplaceEntireQuery();
-            await scenario1.Initialize();
+            //await scenario1.Initialize();
             scenario1.KeyboardInput = new KeyboardInput {Text = "test"};
             var loginExe = scenario1.Processes["Login.exe"];
             var context = new CpuCommandContext {Scenario = scenario1};
@@ -41,7 +41,7 @@ namespace GameLogic.Tests
         public async Task PadsWhenNotDivisibleBy4()
         {
             var scenario = new DereferencingScenario();
-            await scenario.Initialize();
+            //await scenario.Initialize();
 
             scenario.KeyboardInput.Text = "111111110:0A";
 

@@ -18,6 +18,10 @@ namespace gmtk2020_blazor
         [Inject]
         public HttpClient HttpClient { get; set; }
 
+        [Inject]
+        public ScenarioPackageDownloader PackageDownloader { get; set; }
+
+
         public static EventHandler<EventArgs> StepRan;
 
         public EventHandler<EventArgs> RunningStatusChanged;

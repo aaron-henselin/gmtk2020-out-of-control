@@ -13,11 +13,11 @@ namespace GameLogic
 
         }
 
-        public override async Task Initialize()
+        public async Task Initialize()
         {
             NextScenario = "Scenario2";
 
-            await base.Initialize();
+            //await base.Initialize();
 
             //var Memory = new AddressableRegion
             //{

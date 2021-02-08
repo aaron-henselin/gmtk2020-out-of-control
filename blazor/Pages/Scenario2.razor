@@ -42,11 +42,14 @@
 
     @code {
 
-        protected override void OnInitialized()
+        protected override async Task OnInitializedAsync()
         {
-            base.OnInitialized();
+            await base.OnInitializedAsync();
 
-            this.Scenario = new WhatsThePasswordScenario();
+            
+        
+            var package = await PackageDownloader.Download("2_whats_the_password");
+            this.Scenario = new WhatsThePasswordScenario(package);
         }
 
     }

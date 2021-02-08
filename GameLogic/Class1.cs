@@ -519,11 +519,11 @@ namespace GameLogic
         {
             var package = new ScenarioPackage();
 
-            var programsTxt = await _httpClient.GetStringAsync($"/{scenarioName}/programs.txt");
+            var programsTxt = await _httpClient.GetStringAsync($"lib/scenarios/{scenarioName}/programs.txt");
             var groups = FileReader.ReadArray(programsTxt);
             foreach (var group in groups)
             {
-                var programs_txt = await _httpClient.GetStringAsync($"/{scenarioName}/programs.txt");
+                var programs_txt = await _httpClient.GetStringAsync($"lib/scenarios/{scenarioName}/programs.txt");
                 var sections = FileReader.ReadSections(programs_txt);
 
 
@@ -668,9 +668,9 @@ namespace GameLogic
         {
         }
 
-        public override async Task Initialize()
+        public async Task Initialize()
         {
-            await base.Initialize();
+            //await base.Initialize();
 
             var Memory = new AddressableRegion
             {
@@ -808,7 +808,7 @@ namespace GameLogic
 
         }
 
-        public override async Task Initialize()
+        public async Task Initialize()
         {
             
 

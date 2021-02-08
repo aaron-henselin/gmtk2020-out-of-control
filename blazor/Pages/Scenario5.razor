@@ -38,17 +38,15 @@
 
 
 
-@code {
-
     @code {
 
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
+        protected override async Task OnInitializedAsync()
+        {
+            await base.OnInitializedAsync();
 
-        this.Scenario = new SqlOpenSearchConstraint();
+            
+            var package = await PackageDownloader.Download("5_open_search_constraint");
+            this.Scenario = new SqlOpenSearchConstraint(package);
+        }
+
     }
-
-    }
-
-}

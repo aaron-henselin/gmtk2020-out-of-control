@@ -37,18 +37,15 @@
 </div>
 
 
-
-@code {
-
     @code {
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        base.OnInitialized();
+        await base.OnInitializedAsync();
 
-        this.Scenario = new SqlForUsingMemoryAddress();
+        
+        var package = await PackageDownloader.Download("8_sql_for_address");
+        this.Scenario = new SqlForUsingMemoryAddress(package);
     }
 
     }
-
-}

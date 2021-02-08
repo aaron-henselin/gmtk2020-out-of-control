@@ -7,64 +7,70 @@
 @using gmtk2020_blazor.Shared.Components
 @using Shared.Components
 
-<CascadingValue Value="@this">
-    <WinBanner/>
-</CascadingValue>
+@if (Scenario != null)
+{
+    <CascadingValue Value="@this">
+        <WinBanner />
+    </CascadingValue>
 
-        <div class="px-4">
+    <div class="px-4">
 
-            <OperatingSystemDrawer Scenario="@Scenario"></OperatingSystemDrawer>
+        <OperatingSystemDrawer Scenario="@Scenario"></OperatingSystemDrawer>
 
-            <div class="viewport">
-                <h1>(Out of) Control Flow</h1>
-                <p>
-                    The goal of the game is to subvert the expected control flow of a program
-                    by tampering with the contents of memory. It is based on the real-life
-                    buffer overrun threats that have plagued computer science since 1972.
-                </p>
-                
-                @{
-                    var winCondition = "Success is achieved when the output has at least one line of text that is not the phrase 'HELLO, WORLD.'";
-                }
+        <div class="viewport">
+            <h1>(Out of) Control Flow</h1>
+            <p>
+                The goal of the game is to subvert the expected control flow of a program
+                by tampering with the contents of memory. It is based on the real-life
+                buffer overrun threats that have plagued computer science since 1972.
+            </p>
 
-                <h3>Scenario 1</h3>
-                <p>
-                    Outputing "HELLO, WORLD" is the introductory exercise for every programming language out there.
-                    Seems fitting that the tutorial is then to subvert a HELLO, WORLD program. @winCondition
-                 
-
-                </p>
-
-                <CascadingValue Value="@this">
-                    <TerminalViewport>
-                        <KeyboardEntry LaunchAction="@(x => this.Launch(x))"></KeyboardEntry>
-                    </TerminalViewport>
-                </CascadingValue>
-                
-                <p>
-                    <i>
-                        Hint: Watch the CPU Activity and memory contents change as you run the program. Even if you don't have a formal manual on the CPU instructions, you can probably get the gist of what it's doing.
-                        If the interface isn't making sense check the <a href="/ReadMeTxt">ReadMe</a> for an overview. Don't forget, each puzzle has hints you use if you hit a brick wall.
-                    </i>
-                </p>
-                <PrinterOutputDisplay Printer="@Scenario.Printer" WinCondition=@winCondition></PrinterOutputDisplay>
-
-                
-           
-            </div>
-        </div>
-
-
-        @code {
-
-
-            protected override async Task OnInitializedAsync()
-            {
-                await base.OnInitializedAsync();
-
-
-                var package = await PackageDownloader.Download("1_hello_world");
-                this.Scenario = new HelloWorldScenario(package);
+            @{
+                var winCondition = "Success is achieved when the output has at least one line of text that is not the phrase 'HELLO, WORLD.'";
             }
 
-        }
+            <h3>Scenario 1</h3>
+            <p>
+                Outputing "HELLO, WORLD" is the introductory exercise for every programming language out there.
+                Seems fitting that the tutorial is then to subvert a HELLO, WORLD program. @winCondition
+
+
+            </p>
+
+            <CascadingValue Value="@this">
+                <TerminalViewport Scenario="@Scenario">
+                    <KeyboardEntry LaunchAction="@(x => this.Launch(x))"></KeyboardEntry>
+                </TerminalViewport>
+            </CascadingValue>
+
+            <p>
+                <i>
+                    Hint: Watch the CPU Activity and memory contents change as you run the program. Even if you don't have a formal manual on the CPU instructions, you can probably get the gist of what it's doing.
+                    If the interface isn't making sense check the <a href="/ReadMeTxt">ReadMe</a> for an overview. Don't forget, each puzzle has hints you use if you hit a brick wall.
+                </i>
+            </p>
+            <PrinterOutputDisplay Printer="@Scenario.Printer"
+                                  WinCondition=@winCondition></PrinterOutputDisplay>
+
+
+
+        </div>
+    </div>
+
+
+}
+
+
+@code {
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+
+        var package = await PackageDownloader.Download("1_hello_world");
+        this.Scenario = new HelloWorldScenario(package);
+    }
+
+}

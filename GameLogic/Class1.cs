@@ -623,7 +623,13 @@ namespace GameLogic
         public Scenario(ScenarioPackage scenarioPackage)
         {
             foreach (var process in scenarioPackage.Processes)
-                this.Processes.Add(process.Name,process.Process);
+            {
+                var p = process.Process;
+                p.Memory.SetMemoryToDefault();
+
+                this.Processes.Add(process.Name, p);
+            }
+
 
         }
 

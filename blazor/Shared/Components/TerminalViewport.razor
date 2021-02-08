@@ -1,11 +1,16 @@
-﻿@using Microsoft.AspNetCore.Components.Web
+﻿@using GameLogic
+@using Microsoft.AspNetCore.Components.Web
 @using Shared.Components
 
-@foreach (var processKey in ActiveGame.Scenario.Processes.Keys)
+@if (Scenario != null)
 {
-    var processName = processKey;
-    <label @onclick="@(() => SetTab(processName))">@processName</label>
-    @ChildContent
+    foreach (var processKey in Scenario.Processes.Keys)
+    {
+        var processName = processKey;
+        <label @onclick="@(() => SetTab(processName))">@processName</label>
+        @ChildContent
+    }
+
 }
 
 
@@ -13,6 +18,9 @@
 
     [CascadingParameter]
     public IndexBase ActiveGame { get; set; }
+
+    [Parameter]
+    public Scenario Scenario { get; set; }
 
     [Parameter]
     public RenderFragment ChildContent { get; set; }

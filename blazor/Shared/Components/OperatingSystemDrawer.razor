@@ -2,6 +2,9 @@
 @using GameLogic
 @using Microsoft.AspNetCore.Components.Web
 @using Shared.Components
+
+@if (Scenario != null)
+{
     <div class="drawer">
 
 
@@ -42,14 +45,14 @@
 
                     <h2>Drive @i:&nbsp;@Scenario.Disks[i].VolumeName, @readonlyTitle</h2>
                     <div class="window-body mt-2">
-                        <AddressableRegionTable Region="@Scenario.Disks[driveNumber]"/>
+                        <AddressableRegionTable Region="@Scenario.Disks[driveNumber]" />
                     </div>
                 }
                 else
                 {
                     <h2>Drive @driveNumber: {NOT ATTACHED}</h2>
                     <div class="window-body jumbotron">
-                        <AddressableRegionTable Region="@Scenario.Disks[driveNumber]"  @ref="EditRegion"/>
+                        <AddressableRegionTable Region="@Scenario.Disks[driveNumber]" @ref="EditRegion" />
                     </div>
 
                 }
@@ -78,6 +81,9 @@
 
 
     </div>
+}
+
+
 
 @code {
 
@@ -96,7 +102,7 @@
 
     private void Attach(int i)
     {
-        Console.WriteLine("Attaching: "+i);
+        Console.WriteLine("Attaching: " + i);
 
         EditRegion.ApplyChanges();
 

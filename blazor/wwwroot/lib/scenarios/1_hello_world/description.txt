@@ -4,4 +4,7 @@ Anti-HelloWorld
 =description=
 Outputing "HELLO, WORLD" is the introductory exercise for every programming language out there.
 Seems fitting that the tutorial is then to subvert a HELLO, WORLD program.
-Success is achieved when the output has at least one line of text that is not the phrase 'HELLO WORLD.'
+
+=wincondition=
+description:Success is achieved when the output has at least one line of text that is not the phrase 'HELLO WORLD.'
+test:!HELLO   WORLD

@@ -69,16 +69,5 @@ namespace GameLogic
             //});
 
         }
-
-        public override bool IsAtWinCondition()
-        {
-            var winningLines = Printer.TextLines
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .FirstOrDefault(x => "HELLO  WORLD" != x);
-
-            if (winningLines != null)
-                Console.WriteLine("Winning line: "+winningLines);
-            return winningLines != null;
-        }
     }
 }

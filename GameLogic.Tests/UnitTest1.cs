@@ -30,7 +30,7 @@ namespace GameLogic.Tests
             [TestMethod]
             public void Succeeds()
             {
-                ScenarioPackageDeserializer.Deserialize(testFile);
+                ScenarioPackageDeserializer.Deserialize(testFile,null);
             }
         }
     }

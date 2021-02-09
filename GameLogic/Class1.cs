@@ -366,6 +366,19 @@ namespace GameLogic
         public List<string> Lines { get; set; } = new List<string>();
     }
 
+    public class WinCondition
+    {
+        public string Description { get; set; }
+
+        public List<WinConditionMatch> Matches { get; set; } = new List<WinConditionMatch>();
+    }
+
+    public class WinConditionMatch
+    {
+        public string MatchLine { get; set; }
+        public bool NegateMatch { get; set; }
+    }
+
     public static class ScenarioPackageDeserializer
     {
         public static ScenarioPackage Deserialize(string programsTxt,string descriptionTxt)
@@ -418,8 +431,28 @@ namespace GameLogic
                 var descriptionSection = descriptionSections["description"];
                 package.Title = headerSection.Lines[0];
                 package.DescriptionLines = descriptionSection.Lines;
+
+                var winConditionSection = descriptionSections["wincondition"];
+                var winConditionDictionary = FileReader.ReadDictionary(winConditionSection);
+               
+                package.WinCondition = new WinCondition
+                {
+                    Description = winConditionDictionary["description"],
+                };
+
+                var test = winConditionDictionary["test"];
+                var conditions = test.Split(new[] { "||" }, StringSplitOptions.None);
+                foreach (var condition in conditions)
+                {
+                    package.WinCondition.Matches.Add(new WinConditionMatch
+                    {
+                        NegateMatch = condition[0] == '!',
+                        MatchLine = condition.Substring(1).Trim()
+                    });
+                }
+
             }
-            
+
             return package;
 
         }
@@ -599,6 +632,7 @@ namespace GameLogic
         public List<Hint> Hints { get; set; } = new List<Hint>();
         public string Title { get; internal set; }
         public List<string> DescriptionLines { get; internal set; }
+        public WinCondition WinCondition { get; set; } = new WinCondition();
     }
 
     public class ScenarioProcess 
@@ -650,6 +684,8 @@ namespace GameLogic
                 this.Processes.Add(process.Name, p);
             }
 
+            this.WinCondition = scenarioPackage.WinCondition;
+
 
         }
 
@@ -686,7 +722,28 @@ namespace GameLogic
         public string NextScenario { get; set; }
 
 
-        public abstract bool IsAtWinCondition();
+        public virtual bool IsAtWinCondition()
+        {
+            var allMatches = this.WinCondition.Matches;
+            foreach (var match in allMatches)
+            {
+
+                var isWin1 = Printer.TextLines
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Any(x => !match.NegateMatch && string.Equals(match.MatchLine.Trim(), x.Trim(), StringComparison.OrdinalIgnoreCase));
+                if (isWin1)
+                    return true;
+
+                var isWin2 = Printer.TextLines
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Any(x => match.NegateMatch && !string.Equals(match.MatchLine.Trim(), x.Trim(), StringComparison.OrdinalIgnoreCase));
+
+                if (isWin2)
+                    return true;
+            }
+
+            return false;
+        }
 
         public Dictionary<string,Process> Processes { get; set; }= new Dictionary<string, Process>();
 
@@ -703,6 +760,7 @@ namespace GameLogic
         public PrinterOutput Printer { get; set; } = new PrinterOutput();
 
         public List<Hint> Hints { get; set; } = new List<Hint>();
+        public WinCondition WinCondition { get; private set; }
     }
 
     public class KeyboardInput

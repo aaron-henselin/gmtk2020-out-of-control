@@ -386,11 +386,24 @@ namespace GameLogic
 
 
             var package = new ScenarioPackage();
+
+            DeserializeProgramsFile(programsTxt, package);
+
+            if (descriptionTxt != null)
+            {
+                DeserializeDescriptionFile(descriptionTxt, package);
+            }
+
+            return package;
+
+        }
+
+        private static void DeserializeProgramsFile(string programsTxt, ScenarioPackage package)
+        {
             var groups = FileReader.ReadArray(programsTxt);
             foreach (var group in groups)
             {
-
-                var sections = FileReader.ReadSections(group);
+                var sections = FileReader.ReadSections(@group);
 
 
                 var metadataSection = sections["metadata"];
@@ -419,42 +432,35 @@ namespace GameLogic
                         }
                     }
                 });
-
-
-
             }
+        }
 
-            if (descriptionTxt != null)
+        private static void DeserializeDescriptionFile(string descriptionTxt, ScenarioPackage package)
+        {
+            var descriptionSections = FileReader.ReadSections(descriptionTxt);
+            var headerSection = descriptionSections["header"];
+            var descriptionSection = descriptionSections["description"];
+            package.Title = headerSection.Lines.FirstOrDefault();
+            package.DescriptionLines = descriptionSection.Lines;
+
+            var winConditionSection = descriptionSections["wincondition"];
+            var winConditionDictionary = FileReader.ReadDictionary(winConditionSection);
+
+            package.WinCondition = new WinCondition
             {
-                var descriptionSections = FileReader.ReadSections(descriptionTxt);
-                var headerSection = descriptionSections["header"];
-                var descriptionSection = descriptionSections["description"];
-                package.Title = headerSection.Lines[0];
-                package.DescriptionLines = descriptionSection.Lines;
+                Description = winConditionDictionary["description"],
+            };
 
-                var winConditionSection = descriptionSections["wincondition"];
-                var winConditionDictionary = FileReader.ReadDictionary(winConditionSection);
-               
-                package.WinCondition = new WinCondition
+            var test = winConditionDictionary["test"];
+            var conditions = test.Split(new[] {"||"}, StringSplitOptions.None);
+            foreach (var condition in conditions)
+            {
+                package.WinCondition.Matches.Add(new WinConditionMatch
                 {
-                    Description = winConditionDictionary["description"],
-                };
-
-                var test = winConditionDictionary["test"];
-                var conditions = test.Split(new[] { "||" }, StringSplitOptions.None);
-                foreach (var condition in conditions)
-                {
-                    package.WinCondition.Matches.Add(new WinConditionMatch
-                    {
-                        NegateMatch = condition[0] == '!',
-                        MatchLine = condition.Substring(1).Trim()
-                    });
-                }
-
+                    NegateMatch = condition[0] == '!',
+                    MatchLine = condition.Substring(1).Trim()
+                });
             }
-
-            return package;
-
         }
     }
 
@@ -597,7 +603,11 @@ namespace GameLogic
 
                     foreach (var chunk in chunks)
                     {
-                        region.SetDefault(writeCoord, chunk);
+                        var encrypted = chunk.Length > 0 && chunk[1] == '#';
+                        string text = encrypted ? chunk.Substring(1) : chunk;
+
+                        region.SetDefault(writeCoord, text);
+                        region.EncryptionState[writeCoord] = encrypted;
                         writeCoord = region.NextAddress(writeCoord);
                     }
 

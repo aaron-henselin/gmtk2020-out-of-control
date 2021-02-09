@@ -54,15 +54,6 @@ namespace GameLogic
 
         }
 
-        public override bool IsAtWinCondition()
-        {
-            var winningLines = Printer.TextLines
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .FirstOrDefault(x => "ACCESS GRANTED" == x);
 
-            if (winningLines != null)
-                Console.WriteLine("Winning line: " + winningLines);
-            return winningLines != null;
-        }
     }
 }

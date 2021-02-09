@@ -1,4 +1,4 @@
-﻿@page "/"
+﻿@page "/{package}"
 @using System.Net.Http
 @using GameLogic
 @using Microsoft.AspNetCore.Components.Web
@@ -31,8 +31,9 @@
             <p>
                 @foreach (var line in Scenario.DescriptionLines)
                 {
-                    @Scenario.DescriptionLines
+                    @line
                 }
+                @Scenario.WinCondition.Description
             </p>
 
             <CascadingValue Value="@this">
@@ -40,17 +41,9 @@
                     <KeyboardEntry LaunchAction="@(x => this.Launch(x))"></KeyboardEntry>
                 </TerminalViewport>
             </CascadingValue>
-            
-            @*
-            <p>
-                <i>
-                    Hint: Watch the CPU Activity and memory contents change as you run the program. Even if you don't have a formal manual on the CPU instructions, you can probably get the gist of what it's doing.
-                    If the interface isn't making sense check the <a href="/ReadMeTxt">ReadMe</a> for an overview. Don't forget, each puzzle has hints you use if you hit a brick wall.
-                </i>
-            </p>
-            *@
+
             <PrinterOutputDisplay Printer="@Scenario.Printer"
-                                  WinCondition=""></PrinterOutputDisplay>
+                                  WinCondition="@Scenario.WinCondition.Description"></PrinterOutputDisplay>
 
 
 
@@ -63,14 +56,25 @@
 
 @code {
 
+    [Parameter]
+    public string Package { get; set; }
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
-        await base.OnInitializedAsync();
+       
 
+        var packageToGrab = Package ?? "1_hello_world";
+        Console.WriteLine($"grabbing '{packageToGrab}'.");
 
-        var package = await PackageDownloader.Download("1_hello_world");
+        var package = await PackageDownloader.Download(packageToGrab);
+        Console.WriteLine($"downloaded '{packageToGrab}'.");
+
         this.Scenario = new HelloWorldScenario(package);
+        Console.WriteLine($"scenario ready");
+
+        await base.OnParametersSetAsync();
     }
+
+
 
 }

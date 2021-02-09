@@ -1,0 +1,11 @@
+﻿=header=
+Scenario 2
+
+=description=
+So far you've seen the general command 'PUT' which shifts bits around.
+Passwords however are validated using the ASSERT instruction, and the result ('ACCESS GRANTED' or 'ACCESS DENIED') is outputed.
+This program seems determined to only accept a valid password. See what you can do about that. @winCondition
+
+=wincondition=
+description:Success is achieved when 'ACCESS GRANTED' is a line in the output
+test:=ACCESS GRANTED

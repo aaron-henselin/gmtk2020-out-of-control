@@ -12,4 +12,3 @@ SEE ,HERE,   ,#0x51
 =source=
 PUT KB M:0,0
 TEST M:0,0 M:3,2
-

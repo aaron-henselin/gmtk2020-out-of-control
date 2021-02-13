@@ -103,6 +103,16 @@ namespace GameLogic
 
     public class AddressableRegion
     {
+        public AddressableRegion(int rows, int columns,int? driveId)
+        {
+            SizeRows = rows;
+            SizeColumns = columns;
+            DriveId = driveId;
+            InitializeEmptyMemorySpace();
+        }
+
+        public AddressableRegion(){}
+
         public bool IsExternalDrive { get; set; }
         public bool IsMounted { get; set; }
 
@@ -423,7 +433,7 @@ namespace GameLogic
                 var commands = FileReader.ReadCpuCommands(sourceSection.Lines);
 
                 var memorySection = sections["memory"];
-                var memory = FileReader.ReadAddressableRegion(memorySection.Lines);
+                var memory = FileReader.ReadAddressableRegion(memorySection.Lines,null);
 
                 package.Processes.Add(new ScenarioProcess
                 {
@@ -454,10 +464,9 @@ namespace GameLogic
 
                 var metadata = FileReader.ReadDictionary(metadataSection);
 
-                var memorySetup = FileReader.ReadAddressableRegion(contentsSection);
+                var memorySetup = FileReader.ReadAddressableRegion(contentsSection,i);
                 memorySetup.ReadOnly = metadata["readonly"] == "true";
                 memorySetup.VolumeName = metadata["name"];
-                memorySetup.DriveId = i;
 
                 package.Drives.Add(memorySetup);
             }
@@ -596,12 +605,12 @@ namespace GameLogic
                     x => x.Value,StringComparer.OrdinalIgnoreCase);
         }
 
-        public static AddressableRegion ReadAddressableRegion(Section section)
+        public static AddressableRegion ReadAddressableRegion(Section section,int? driveId)
         {
-            return ReadAddressableRegion(section.Lines);
+            return ReadAddressableRegion(section.Lines,driveId);
         }
 
-        public static AddressableRegion ReadAddressableRegion(IReadOnlyList<string> lines)
+        public static AddressableRegion ReadAddressableRegion(IReadOnlyList<string> lines, int? driveId)
         {
 
             var kvp = ReadKvp(lines[0]);
@@ -610,13 +619,9 @@ namespace GameLogic
                 .Select(x => Convert.ToInt32(x))
                 .ToList();
 
-            var region = new AddressableRegion
-            {
-                SizeRows = size[0],
-                SizeColumns = size[1],
-            };
-            region.InitializeEmptyMemorySpace();
-
+            var region = new AddressableRegion(size[0], size[1],driveId);
+            
+            
             var multiline = string.IsNullOrWhiteSpace(kvp.Value);
             if (!multiline)
             {

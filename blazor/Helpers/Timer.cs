@@ -22,7 +22,10 @@ namespace gmtk2020_blazor.Helpers
 
         public Dictionary<string, ProcessState> ProcessStates { get; set; } = new Dictionary<string, ProcessState>();
 
-       
+        public void ClearProcessStates()
+        {
+            ProcessStates = new Dictionary<string, ProcessState>();
+        }
 
         //public CpuCommandContext ForegroundCpuContext { get; internal set; } = new CpuCommandContext();
         //public CpuCommandContext BackgroundCpuContext { get; internal set; } = new CpuCommandContext();

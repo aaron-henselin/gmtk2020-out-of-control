@@ -26,13 +26,24 @@ namespace GameLogic.Tests
                 PUT M:1,1 PRINT
                 PUT M:2B PRINT
                 PUT KB M:0C
-                TEST M:0 0:0,0
+                TEST M:0C 0:0,0
+                ";
+
+            private string drivesFile = @"
+                =metadata=
+                name:Keystore
+                readonly:false
+
+                =contents=
+                1x4:
+                #0x1x,#   ,#   ,#    
                 ";
 
             [TestMethod]
             public void Succeeds()
             {
-                ScenarioPackageDeserializer.Deserialize(testFile,null,null);
+                var package = ScenarioPackageDeserializer.Deserialize(testFile,null,drivesFile);
+                var scenario = new HelloWorldScenario(package);
             }
         }
     }
@@ -117,7 +128,7 @@ namespace GameLogic.Tests
             {
                 var testFile = new[] {"3x4:test"};
 
-                var arr = FileReader.ReadAddressableRegion(testFile);
+                var arr = FileReader.ReadAddressableRegion(testFile,null);
                 Assert.AreEqual(3,arr.SizeRows);
                 Assert.AreEqual(4, arr.SizeColumns);
             }
@@ -127,7 +138,7 @@ namespace GameLogic.Tests
             {
                 var testFile = new[] { "3x4:test" };
 
-                var arr = FileReader.ReadAddressableRegion(testFile);
+                var arr = FileReader.ReadAddressableRegion(testFile,null);
                 var defaultValue = arr.Default[MemoryCoordinate.FromText("M:0A")];
                 Assert.AreEqual("test",defaultValue);
             }
@@ -143,7 +154,7 @@ namespace GameLogic.Tests
                     "test,test,test,test"
                 };
 
-                var arr = FileReader.ReadAddressableRegion(testFile);
+                var arr = FileReader.ReadAddressableRegion(testFile,null);
                 var defaultValue = arr.Default[MemoryCoordinate.FromText("M:3C")];
                 Assert.AreEqual("test", defaultValue);
             }

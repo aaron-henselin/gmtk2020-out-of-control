@@ -24,13 +24,15 @@ namespace GameLogic.Tests
                 PUT KB M:0,0
                 PUT M:0,1 PRINT
                 PUT M:1,1 PRINT
-                PUT M:2,1 PRINT
+                PUT M:2B PRINT
+                PUT KB M:0C
+                TEST M:0 0:0,0
                 ";
 
             [TestMethod]
             public void Succeeds()
             {
-                ScenarioPackageDeserializer.Deserialize(testFile,null);
+                ScenarioPackageDeserializer.Deserialize(testFile,null,null);
             }
         }
     }

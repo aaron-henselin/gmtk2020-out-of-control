@@ -99,6 +99,8 @@ namespace GameLogic
         public MemoryCoordinate? Coordinate { get; set; }
     }
 
+
+
     public class AddressableRegion
     {
         public bool IsExternalDrive { get; set; }
@@ -381,7 +383,7 @@ namespace GameLogic
 
     public static class ScenarioPackageDeserializer
     {
-        public static ScenarioPackage Deserialize(string programsTxt,string descriptionTxt)
+        public static ScenarioPackage Deserialize(string programsTxt,string descriptionTxt,string disksTxt)
         {
 
 
@@ -392,6 +394,11 @@ namespace GameLogic
             if (descriptionTxt != null)
             {
                 DeserializeDescriptionFile(descriptionTxt, package);
+            }
+
+            if (disksTxt != null)
+            {
+                DeserializeDisksFile(disksTxt, package);
             }
 
             return package;
@@ -433,6 +440,28 @@ namespace GameLogic
                     }
                 });
             }
+        }
+
+        private static void DeserializeDisksFile(string disksTxt, ScenarioPackage package)
+        {
+            int i = 0;
+            var driveArray = FileReader.ReadArray(disksTxt).ToList();
+            foreach (var driveDefinition in driveArray)
+            {
+                var sections = FileReader.ReadSections(driveDefinition);
+                var contentsSection = sections["contents"];
+                var metadataSection = sections["metadata"];
+
+                var metadata = FileReader.ReadDictionary(metadataSection);
+
+                var memorySetup = FileReader.ReadAddressableRegion(contentsSection);
+                memorySetup.ReadOnly = metadata["readonly"] == "true";
+                memorySetup.VolumeName = metadata["name"];
+                memorySetup.DriveId = i;
+
+                package.Drives.Add(memorySetup);
+            }
+            
         }
 
         private static void DeserializeDescriptionFile(string descriptionTxt, ScenarioPackage package)
@@ -516,6 +545,9 @@ namespace GameLogic
 
         public static IEnumerable<IReadOnlyCollection<string>> ReadArray(string str)
         {
+            if (string.IsNullOrWhiteSpace(str))
+                return new IReadOnlyCollection<string>[0];
+
             string[] lines = GetLines(str);
             List<List<string>> groups = new List<List<string>> { new List<string>() };
             foreach (var line in lines)
@@ -564,6 +596,11 @@ namespace GameLogic
                     x => x.Value,StringComparer.OrdinalIgnoreCase);
         }
 
+        public static AddressableRegion ReadAddressableRegion(Section section)
+        {
+            return ReadAddressableRegion(section.Lines);
+        }
+
         public static AddressableRegion ReadAddressableRegion(IReadOnlyList<string> lines)
         {
 
@@ -603,7 +640,7 @@ namespace GameLogic
 
                     foreach (var chunk in chunks)
                     {
-                        var encrypted = chunk.Length > 0 && chunk[1] == '#';
+                        var encrypted = chunk.Length > 0 && chunk[0] == '#';
                         string text = encrypted ? chunk.Substring(1) : chunk;
 
                         region.SetDefault(writeCoord, text);
@@ -643,6 +680,7 @@ namespace GameLogic
         public string Title { get; internal set; }
         public List<string> DescriptionLines { get; internal set; }
         public WinCondition WinCondition { get; set; } = new WinCondition();
+        public List<AddressableRegion> Drives { get; set; } = new List<AddressableRegion>();
     }
 
     public class ScenarioProcess 
@@ -665,14 +703,12 @@ namespace GameLogic
 
             var programsTxt = await _httpClient.GetStringAsync($"lib/scenarios/{scenarioName}/programs.txt");
             var descriptionTxt = await _httpClient.GetStringAsync($"lib/scenarios/{scenarioName}/description.txt");
-
+            var drivesTxt = await _httpClient.GetStringAsync($"lib/scenarios/{scenarioName}/disks.txt");
 
             //var hints_txt = await _httpClient.GetStringAsync($"/{scenarioName}/hints.txt");
             //package.Hints = FileReader.ReadHints(hints_txt).ToList();
 
-            return ScenarioPackageDeserializer.Deserialize(
-                programsTxt, descriptionTxt
-                );
+            return ScenarioPackageDeserializer.Deserialize(programsTxt, descriptionTxt, drivesTxt);
         }
 
     }
@@ -696,7 +732,12 @@ namespace GameLogic
 
             this.WinCondition = scenarioPackage.WinCondition;
 
-
+            foreach (var drive in scenarioPackage.Drives)
+            {
+                drive.SetMemoryToDefault();
+                this.Disks.Add(drive);
+            }
+            
         }
 
         public List<string> DescriptionLines { get; set; }

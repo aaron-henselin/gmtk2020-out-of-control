@@ -27,6 +27,8 @@
 
     private void SetTab(string newProcessName)
     {
+        Console.WriteLine("set tab: "+ newProcessName);
+
         ActiveGame.ViewportProcessName = newProcessName;
         this.StateHasChanged();
     }

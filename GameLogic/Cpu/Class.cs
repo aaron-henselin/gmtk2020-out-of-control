@@ -694,18 +694,26 @@ namespace gmtk2020_blazor.Models.Cpu
 
         public static ReadCpuCommand FromText(string text)
         {
-
-
-            var substring = text.Substring(4);
-            var parts = substring.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            var from = Target.ResolveTarget(parts[0]);
-            var to = Target.ResolveTarget(parts[1]);
-
-            return new ReadCpuCommand
+            try
             {
-                From = from,
-                To = to
-            };
+                var substring = text.Substring(4);
+                var parts = substring.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                var from = Target.ResolveTarget(parts[0]);
+                var to = Target.ResolveTarget(parts[1]);
+
+                return new ReadCpuCommand
+                {
+                    From = from,
+                    To = to
+                };
+            }
+            catch (ArgumentException e)
+            {
+                Console.WriteLine("Unable to parse cpu command: "+ text,e);
+                throw;
+            }
+
+
         }
 
 

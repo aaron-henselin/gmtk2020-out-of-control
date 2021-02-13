@@ -1,0 +1,10 @@
+﻿=header=
+Scenario 3
+
+=description=
+Please enter your 4 character pin number to manage the camera feed.
+^ Note: pin number 'HOTDOG' has been disabled due to it not being 4 characters, or a number.
+
+=wincondition=
+description:Success is achieved when 'ACCESS GRANTED' is a line in the output
+test:=ACCESS GRANTED

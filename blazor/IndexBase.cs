@@ -174,20 +174,15 @@ namespace gmtk2020_blazor
             base.OnInitialized();
 
 
+            StartTimer();
 
         }
 
         protected override async Task OnParametersSetAsync()
         {
-            //await Scenario.Initialize();
+            SetDefaultViewport();
 
-            if (string.IsNullOrWhiteSpace(ViewportProcessName))
-            {
-                string defaultViewport = Scenario.Processes.FirstOrDefault(x => !x.Value.IsBackgroundProcess).Key;
-                ViewportProcessName = defaultViewport;
-
-            }
-
+            Timer.ClearProcessStates();
             var processNames = Scenario.Processes.Where(x => x.Value.IsBackgroundProcess).Select(x => x.Key);
             foreach (var backgroundProcessName in processNames)
             {
@@ -204,7 +199,12 @@ namespace gmtk2020_blazor
 
 
 
-            StartTimer();
+        }
+
+        private void SetDefaultViewport()
+        {
+            string defaultViewport = Scenario.Processes.FirstOrDefault(x => !x.Value.IsBackgroundProcess).Key;
+            ViewportProcessName = defaultViewport;
         }
 
         //public CpuProgram CpuProgram { get; set; }

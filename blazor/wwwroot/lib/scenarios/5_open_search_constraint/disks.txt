@@ -1,0 +1,10 @@
+﻿=metadata=
+name:Keystore
+readonly:true
+
+=contents=
+4x4:
+#~451,    ,    ,    
+     ,    ,    ,    
+     ,    ,    ,    
+*YOU,R KE,Y HE,RE*

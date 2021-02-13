@@ -1,6 +1,6 @@
 ﻿=metadata=
-prompt:Please enter your password
-instruction:^ Can't remember your password? Try 'Password'.
+prompt:I'm telling ya kid, you're definitely not getting into this system without a password.
+instruction:Success is achieved when 'ACCESS GRANTED' is a line in the output
 name:login.exe
 
 =memory=

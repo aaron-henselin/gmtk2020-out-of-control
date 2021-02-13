@@ -48,8 +48,6 @@
     <Folder Include="NewFolder\" />
     <Folder Include="wwwroot\lib\scenarios\9_exploit_next_address\" />
     <Folder Include="wwwroot\lib\scenarios\7_replace_entire_query\" />
-    <Folder Include="wwwroot\lib\scenarios\6_sql_goto\" />
-    <Folder Include="wwwroot\lib\scenarios\5_open_search_constraint\" />
   </ItemGroup>
 
   <ItemGroup>

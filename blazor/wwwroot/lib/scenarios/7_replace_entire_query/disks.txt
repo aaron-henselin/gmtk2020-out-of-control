@@ -1,0 +1,20 @@
+﻿=metadata=
+name:Keystore
+readonly:true
+
+=contents=
+3x4:
+# ,# ,# ,#~451
+# ,# ,# ,#~451
+# ,# ,# ,#~451
+
+--
+
+=metadata=
+name:QUERY_BUILDER
+readonly:false
+
+=contents=
+2x4:
+QUER,Y ,0:3*, FOR
+   `,  ,    ,    

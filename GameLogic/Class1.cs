@@ -464,7 +464,7 @@ namespace GameLogic
 
                 var metadata = FileReader.ReadDictionary(metadataSection);
 
-                var memorySetup = FileReader.ReadAddressableRegion(contentsSection,i);
+                var memorySetup = FileReader.ReadAddressableRegion(contentsSection,i++);
                 memorySetup.ReadOnly = metadata["readonly"] == "true";
                 memorySetup.VolumeName = metadata["name"];
 
@@ -510,7 +510,7 @@ namespace GameLogic
         {
             var commands = new List<CpuCommand>();
             foreach (var str in strs)
-                commands.Add(ReadCpuCommand.FromText(str));
+                commands.Add(CpuCommandFactory.Build(str));
             return commands;
         }
 
@@ -729,9 +729,10 @@ namespace GameLogic
 
             foreach (var process in scenarioPackage.Processes)
             {
+                Console.WriteLine("Attaching " + process.Name);
+
                 var p = process.Process;
                 p.Memory.SetMemoryToDefault();
-
                 this.Processes.Add(process.Name, p);
             }
 
@@ -739,6 +740,9 @@ namespace GameLogic
 
             foreach (var drive in scenarioPackage.Drives)
             {
+                Console.WriteLine($"Attaching drive {drive.DriveId}");
+                Console.WriteLine($"Coord range {drive.AllCoordinates.First()} ->  {drive.AllCoordinates.Last()}");
+
                 drive.SetMemoryToDefault();
                 this.Disks.Add(drive);
             }

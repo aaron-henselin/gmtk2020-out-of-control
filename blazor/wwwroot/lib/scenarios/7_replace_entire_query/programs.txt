@@ -1,0 +1,19 @@
+﻿=metadata=
+prompt:Please enter your password
+instruction:^ Can't remember your password? Try 'Password'.
+name:Login.exe
+
+=memory=
+2x4:
+ , , , 
+ , , , 
+
+=source=
+PUT KBD 1:1B
+PUT `QUER 1:0A
+PUT `Y 1:1A
+PUT @StartLiteral 1:0B
+EXEC 1:**
+PUT @Index M:0B
+TEST 1:1B XM:0B
+

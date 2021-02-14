@@ -6,9 +6,9 @@ instruction:^ Can't remember your pin number? Try '1234'. That's what I use for 
 =memory=
 3x4:
 NOTH,ING ,TO , 
-SEE ,HERE,   ,#0x51
-    ,    ,   ,
+SEE ,HERE,   ,
+    ,    ,   ,#0x51
 
 =source=
-PUT KB M:0,0
-TEST M:0,0 M:3,2
+PUT KB M:0A
+TEST M:0A M:3C

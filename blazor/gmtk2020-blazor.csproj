@@ -46,8 +46,6 @@
   <ItemGroup>
     <Folder Include="Models\Memory\" />
     <Folder Include="NewFolder\" />
-    <Folder Include="wwwroot\lib\scenarios\9_exploit_next_address\" />
-    <Folder Include="wwwroot\lib\scenarios\7_replace_entire_query\" />
   </ItemGroup>
 
   <ItemGroup>

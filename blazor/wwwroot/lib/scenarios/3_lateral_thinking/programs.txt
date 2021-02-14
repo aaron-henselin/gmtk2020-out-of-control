@@ -7,7 +7,7 @@ name:login.exe
 3x4:
 VALI,DATI,NG  ,
 PASS,WORD,|   ,
-    ,    ,    ,#0x51
+    ,    ,    ,
 
 =source=
 PUT M:0A PRINT
@@ -17,4 +17,4 @@ PUT M:0B PRINT
 PUT M:1B PRINT
 PUT M:2B PRINT
 PUT KB M:0C
-TEST M:0C 0:0,0
+TEST M:0C 0:0A

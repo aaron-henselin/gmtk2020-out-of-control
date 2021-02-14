@@ -4,4 +4,4 @@ readonly:false
 
 =contents=
 1x4:
-#0x1x,#   ,#   ,#    
+#~0x1,#   ,#   ,#    

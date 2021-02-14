@@ -31,6 +31,11 @@ namespace gmtk2020_blazor.Models.Cpu
             if (isSeek)
                 return SeekCpuCommand.FromText(line);
 
+            var isExec = string.Equals(commandName, "exec", StringComparison.OrdinalIgnoreCase);
+            if (isExec)
+                return ExecCpuCommand.FromText(line);
+
+
             throw new ArgumentException($"Unknown cpu command '{commandName}'");
         }
     }

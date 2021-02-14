@@ -16,8 +16,8 @@ readonly:false
 
 =contents=
 2x4:
-QUER,Y ,0:3*, FOR
-   `,  ,    ,    
+QUER,Y   ,0:3*,
+FOR ,   `,   ,    
 
 --
 
@@ -27,5 +27,5 @@ readonly:false
 
 =contents=
 2x4:
-QUER,Y ,0:3*, FOR
-   `,  ,    ,    
+QUER,Y   ,0:3*,
+FOR ,   `,   ,   

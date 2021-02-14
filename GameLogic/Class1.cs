@@ -262,32 +262,45 @@ namespace GameLogic
 
             }).ToList();
 
-
+          
 
             var coordinates = FilterCoordinates(constraints);
-            foreach (var coordinate in coordinates)
+            foreach (var searchCoordinate in coordinates)
             {
-                bool matched=true;
-                var offset = coordinate;
-                foreach (var paddedValue in paddedValues)
-                {
-                    var valueAtAddress = Read(offset);
-                    var areEqual = string.Equals(valueAtAddress,paddedValue,StringComparison.OrdinalIgnoreCase);
-                    if (!areEqual)
-                    {
-                        matched = false;
-                        break;
-                    }
-
-                    offset = this.NextAddress(coordinate);
-                }
-
-                if (matched)
-                    return coordinate;
-
+                if (TestSearchCoordinate(searchCoordinate, paddedValues))
+                    return searchCoordinate;
             }
 
             return null;
+        }
+
+        private bool TestSearchCoordinate(MemoryCoordinate searchCoordinate, List<string> paddedValues)
+        {
+            bool matched = true;
+
+            var compareCoordinate = searchCoordinate;
+            int matchLength = 0;
+            foreach (var paddedValue in paddedValues)
+            {
+                var compareValue = Read(compareCoordinate);
+                compareValue = compareValue.PadRight(4, ' ');
+                var areEqual = string.Equals(compareValue, paddedValue, StringComparison.OrdinalIgnoreCase);
+                if (!areEqual)
+                {
+                    if (matchLength > 0)
+                    {
+                        Console.WriteLine(
+                            $"Multi-cell match failed at {compareCoordinate} on comparison '{compareValue}' to '{paddedValue}', out of: {string.Join("/", paddedValues)}");
+                    }
+
+                    matched = false;
+                    break;
+                }
+                matchLength++;
+                compareCoordinate = this.NextAddress(compareCoordinate);
+            }
+
+            return matched;
         }
     }
 

@@ -46,7 +46,6 @@
   <ItemGroup>
     <Folder Include="Models\Memory\" />
     <Folder Include="NewFolder\" />
-    <Folder Include="wwwroot\lib\scenarios\10_exploit_next_address2\" />
   </ItemGroup>
 
   <ItemGroup>

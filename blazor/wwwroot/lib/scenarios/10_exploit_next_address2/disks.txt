@@ -1,0 +1,33 @@
+﻿=metadata=
+name:Keystore
+readonly:true
+
+=contents=
+3x4:
+USR1,#12  ,DENY,HIGH
+USR2,#~451,DENY,HIGH
+USR3,#~451,DENY,LOW
+
+--
+
+=metadata=
+name:BACKUP
+readonly:true
+
+=contents=
+3x4:
+USR1,#12  ,    ,HIGH
+USR2,#~451,    ,HIGH
+USR3,#~451,    ,LOW
+
+--
+
+=metadata=
+name:QUERY_TEMPLATE
+readonly:false
+
+=contents=
+2x4:
+QUER,Y   ,*:0*,
+FOR ,@U/`,    ,   
+

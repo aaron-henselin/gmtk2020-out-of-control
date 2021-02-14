@@ -35,6 +35,10 @@ namespace gmtk2020_blazor.Models.Cpu
             if (isExec)
                 return ExecCpuCommand.FromText(line);
 
+            var isDump = string.Equals(commandName, "dump", StringComparison.OrdinalIgnoreCase);
+            if (isDump)
+                return DumpCommand.FromText(line);
+
 
             throw new ArgumentException($"Unknown cpu command '{commandName}'");
         }
@@ -664,21 +668,19 @@ namespace gmtk2020_blazor.Models.Cpu
 
         }
 
-        //public static ReadCpuCommand FromText(string text)
-        //{
+        public static DumpCommand FromText(string text)
+        {
+            var dump = new DumpCommand();
+
+            var substring = text.Substring(4);
+            var parts = substring.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 
 
-        //    var substring = text.Substring(4);
-        //    var parts = substring.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-        //    var from = Target.ResolveTarget(parts[0]);
-        //    var to = Target.ResolveTarget(parts[1]);
+            dump.From=SearchConstraints.ResolveTarget(parts[0]);
+            dump.Target = Target.ResolveTarget(parts[1]);
 
-        //    return new ReadCpuCommand
-        //    {
-        //        From = from,
-        //        To = to
-        //    };
-        //}
+            return dump;
+        }
     }
 
     public class ReadCpuCommand : CpuCommand

@@ -1,0 +1,17 @@
+﻿=metadata=
+name:SWAP_DRIVE
+readonly:false
+
+=contents=
+1x4:
+     ,    ,    , 
+
+--
+
+=metadata=
+name:Keystore
+readonly:true
+
+=contents=
+1x4:
+#0451,#0451,PASS,#0451

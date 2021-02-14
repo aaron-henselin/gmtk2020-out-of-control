@@ -1,4 +1,20 @@
-﻿
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
+using System.Threading.Tasks;
+using gmtk2020_blazor.Models.Cpu;
+
+namespace GameLogic
+{
+    public class SqlFakeGotoLabel : Scenario
+    {
+        public SqlFakeGotoLabel(ScenarioPackage package) : base(package)
+        {
+        }
+
+        public async Task Initialize()
+        {
             var Memory = new AddressableRegion
             {
                 SizeRows = 3,
@@ -41,30 +57,10 @@
 
             #region disk
 
-            //var disk1 = new AddressableRegion
-            //{
-            //    VolumeName = "SWAP_DRIVE",
-            //    ReadOnly = true,
-            //    DriveId = 1,
-            //    SizeRows = 1,
-            //    SizeColumns = 4,
-            //    IsExternalDrive = true,
-            //    IsMounted = false
-            //};
-            //disk1.InitializeEmptyMemorySpace();
-            //disk1.SetDefault(new MemoryCoordinate { DriveId = 1, X = 0, Y = 0 }, "YOUR");
-            //disk1.SetDefault(new MemoryCoordinate { DriveId = 1, X = 1, Y = 0 }, "DATA");
-            //disk1.SetDefault(new MemoryCoordinate { DriveId = 1, X = 2, Y = 0 }, "HERE");
-            //disk1.SetMemoryToDefault();
-            //Disks.Add(disk1);
 
             #endregion
 
             Memory.SetMemoryToDefault();
-
-            //
-            // 
-
 
             var ManualProgram = new CpuProgram();
             ManualProgram.AllCommands = new List<CpuCommand>();
@@ -75,13 +71,6 @@
             ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT @Index M:0B"));
             ManualProgram.AllCommands.Add(new AssertCpuCommand("0:0A", "XM:0B"));
 
-            //ManualProgram.AllCommands.Add(ReadCpuCommand.FromText("PUT KB M:2C"));
-
-            //ManualProgram.AllCommands.Add(new AssertCpuCommand
-            //{
-            //    CompareLeft = MediaTarget.FromText("M:2C"),
-            //    CompareRight = MediaTarget.FromText("0:0,0")
-            //});
 
             AddProcess("Login.exe", new Process
             {
@@ -109,3 +98,19 @@
                 Title = "The password's in encrypted memory, I can't see it.",
                 Body = "Find a way to get the password OUT of encrypted memory."
             });
+        }
+
+        public override bool IsAtWinCondition()
+        {
+            var winningLines = Printer.TextLines
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .FirstOrDefault(x => "ACCESS GRANTED" == x);
+
+            if (winningLines != null)
+                Console.WriteLine("Winning line: " + winningLines);
+            return winningLines != null;
+        }
+
+
+    }
+}

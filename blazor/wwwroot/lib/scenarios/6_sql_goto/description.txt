@@ -1,0 +1,10 @@
+﻿=header=
+Scenario 6
+
+=description=
+I'm telling ya kid, you're definitely not getting into this system without a password.
+            
+
+=wincondition=
+description:Success is achieved when 'ACCESS GRANTED' is a line in the output
+test:=ACCESS GRANTED

@@ -7,3 +7,5 @@ We got some credentials that don't seem to work anymore. Maybe there's still a w
 =wincondition=
 description:Success is achieved when 'HIGH' is a line in the output
 test:=HIGH
+
+=solution=

@@ -9,28 +9,28 @@
   <ItemGroup>
     <Compile Remove=".template.config\**" />
     <Compile Remove="wwwroot\css\fonts\**" />
-    <Compile Remove="wwwroot\lib\scenarios\1_hello_world\disks\**" />
-    <Compile Remove="wwwroot\lib\scenarios\2_whats_the_password\disks\**" />
+    <Compile Remove="wwwroot\lib\scenarios\01_hello_world\disks\**" />
+    <Compile Remove="wwwroot\lib\scenarios\02_whats_the_password\disks\**" />
     <Compile Remove="wwwroot\js\_site\**" />
-    <Compile Remove="wwwroot\lib\scenarios\3_lateral_thinking\disks\**" />
+    <Compile Remove="wwwroot\lib\scenarios\03_lateral_thinking\disks\**" />
     <Content Remove=".template.config\**" />
     <Content Remove="wwwroot\css\fonts\**" />
-    <Content Remove="wwwroot\lib\scenarios\1_hello_world\disks\**" />
-    <Content Remove="wwwroot\lib\scenarios\2_whats_the_password\disks\**" />
+    <Content Remove="wwwroot\lib\scenarios\01_hello_world\disks\**" />
+    <Content Remove="wwwroot\lib\scenarios\02_whats_the_password\disks\**" />
     <Content Remove="wwwroot\js\_site\**" />
-    <Content Remove="wwwroot\lib\scenarios\3_lateral_thinking\disks\**" />
+    <Content Remove="wwwroot\lib\scenarios\03_lateral_thinking\disks\**" />
     <EmbeddedResource Remove=".template.config\**" />
     <EmbeddedResource Remove="wwwroot\css\fonts\**" />
-    <EmbeddedResource Remove="wwwroot\lib\scenarios\1_hello_world\disks\**" />
-    <EmbeddedResource Remove="wwwroot\lib\scenarios\2_whats_the_password\disks\**" />
+    <EmbeddedResource Remove="wwwroot\lib\scenarios\01_hello_world\disks\**" />
+    <EmbeddedResource Remove="wwwroot\lib\scenarios\02_whats_the_password\disks\**" />
     <EmbeddedResource Remove="wwwroot\js\_site\**" />
-    <EmbeddedResource Remove="wwwroot\lib\scenarios\3_lateral_thinking\disks\**" />
+    <EmbeddedResource Remove="wwwroot\lib\scenarios\03_lateral_thinking\disks\**" />
     <None Remove=".template.config\**" />
     <None Remove="wwwroot\css\fonts\**" />
-    <None Remove="wwwroot\lib\scenarios\1_hello_world\disks\**" />
-    <None Remove="wwwroot\lib\scenarios\2_whats_the_password\disks\**" />
+    <None Remove="wwwroot\lib\scenarios\01_hello_world\disks\**" />
+    <None Remove="wwwroot\lib\scenarios\02_whats_the_password\disks\**" />
     <None Remove="wwwroot\js\_site\**" />
-    <None Remove="wwwroot\lib\scenarios\3_lateral_thinking\disks\**" />
+    <None Remove="wwwroot\lib\scenarios\03_lateral_thinking\disks\**" />
   </ItemGroup>
 
   <ItemGroup>
@@ -46,6 +46,7 @@
   <ItemGroup>
     <Folder Include="Models\Memory\" />
     <Folder Include="NewFolder\" />
+    <Folder Include="wwwroot\lib\scenarios\10_exploit_next_address2\" />
   </ItemGroup>
 
   <ItemGroup>

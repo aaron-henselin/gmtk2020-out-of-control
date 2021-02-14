@@ -4,7 +4,7 @@ readonly:true
 
 =contents=
 4x4:
-#~451,    ,    ,    
-     ,    ,    ,    
-     ,    ,    ,    
-*YOU,R KE,Y HE,RE*
+#     ,#    ,#    ,#~451
+#     ,#    ,#    ,#~451    
+#     ,#    ,#    ,#~451    
+*PUT ,KEYS, HER,E***

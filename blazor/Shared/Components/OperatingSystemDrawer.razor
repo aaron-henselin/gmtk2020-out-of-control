@@ -7,10 +7,15 @@
 {
     <div class="drawer">
 
-
-        @foreach (var processName in Scenario.Processes.Keys)
-        {
-            var process = Scenario.Processes[processName];
+        
+        
+        
+            
+        @{
+                var processName = ActiveGame.ViewportProcessName;
+                var process = ActiveGame.ViewportProcess;
+                
+            }
 
             <div @key="@processName">
                 <label>@processName</label>
@@ -31,7 +36,7 @@
                     </div>
                 </div>
             </div>
-        }
+        
 
 
         @for (int i = 0; i < Scenario.Disks.Count; i++)
@@ -84,12 +89,14 @@
 }
 
 
-
 @code {
 
     [Parameter]
     public Scenario Scenario { get; set; }
 
+    [CascadingParameter]
+    public IndexBase ActiveGame { get; set; }
+    
     private AddressableRegionTable EditRegion { get; set; }
 
     private void Detach(int i)
@@ -110,5 +117,14 @@
         this.StateHasChanged();
     }
 
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        ActiveGame.ViewportChanged += (sender, args) =>
+        {
+            this.StateHasChanged();
+        };
+    }
 
 }

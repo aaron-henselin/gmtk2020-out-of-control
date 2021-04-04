@@ -443,7 +443,20 @@ namespace GameLogic
                 var instruction = programMetadata["instruction"];
 
                 var sourceSection = sections["source"];
-                var commands = FileReader.ReadCpuCommands(sourceSection.Lines);
+                IReadOnlyCollection<CpuCommand> commands;
+                try
+                {
+                    commands = FileReader.ReadCpuCommands(sourceSection.Lines);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("program contents was: ");
+                    foreach (var line in sourceSection.Lines)
+                        Console.WriteLine(line);
+
+                    throw;
+                }
+
 
                 var memorySection = sections["memory"];
                 var memory = FileReader.ReadAddressableRegion(memorySection.Lines,null);
@@ -549,6 +562,12 @@ namespace GameLogic
 
             }
 
+            var duplicates=groups.ToLookup(x => x.Name).Where(x => x.Count() > 1);
+            if (duplicates.Any())
+            {
+                throw new InvalidOperationException("Section '" + duplicates.First().Key + "' appears more than once.");
+            }
+
             return groups.ToDictionary(x => x.Name,StringComparer.OrdinalIgnoreCase);
         }
 
@@ -574,11 +593,10 @@ namespace GameLogic
             List<List<string>> groups = new List<List<string>> { new List<string>() };
             foreach (var line in lines)
             {
-                groups[groups.Count - 1].Add(line);
-
                 if ("--" == line)
                     groups.Add(new List<string>());
-
+                else
+                    groups[groups.Count - 1].Add(line);
             }
 
             return groups;

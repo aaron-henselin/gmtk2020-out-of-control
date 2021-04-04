@@ -28,8 +28,26 @@ namespace gmtk2020_blazor
 
         public EventHandler<EventArgs> WinConditionRaised;
 
+        public EventHandler<EventArgs> ViewportChanged;
+
+
         //public bool ManualProgramRunning { get; set; }
-        public string ViewportProcessName { get; set; }
+
+        private string _viewportProcessName;
+
+        public string ViewportProcessName
+        {
+            get
+            {
+                return _viewportProcessName;
+            }
+            set
+            {
+                _viewportProcessName = value;
+                this.ViewportChanged?.Invoke(this,new EventArgs());
+            }
+        }
+
         public string ScenarioName { get; set; }
 
         public Process ViewportProcess

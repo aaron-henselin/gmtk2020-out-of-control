@@ -9,10 +9,9 @@ name:Login.exe
  , , , 
 
 =source=
-
+PUT KBD M:0A
 
 --
-
 =metadata=
 prompt:Address Calculator
 instruction:^ Memory math is hard! Enter a memory address and I'll add a row to it.
@@ -23,3 +22,4 @@ name:CALC.exe
     ,   `,    
 
 =source=
+PUT KBD M:0A

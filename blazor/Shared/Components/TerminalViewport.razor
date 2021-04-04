@@ -7,10 +7,10 @@
     foreach (var processKey in Scenario.Processes.Keys)
     {
         var processName = processKey;
-        <label @onclick="@(() => SetTab(processName))">@processName</label>
-        @ChildContent
+        <a href="javscript:void(0);" @onclick="@(() => SetTab(processName))">@processName</a>
+      
     }
-
+    @ChildContent
 }
 
 

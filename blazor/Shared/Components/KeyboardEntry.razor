@@ -64,6 +64,11 @@ else
         {
             this.StateHasChanged();
         };
+
+        ActiveGame.ViewportChanged += (sender, args) =>
+        {
+            this.StateHasChanged();
+        };
     }
 
 

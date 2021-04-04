@@ -1,0 +1,25 @@
+﻿=metadata=
+prompt:Please enter your password
+instruction:^ Can't remember your password? Try 'Password'.
+name:Login.exe
+
+=memory=
+2x4:
+ , , , 
+ , , , 
+
+=source=
+
+
+--
+
+=metadata=
+prompt:Address Calculator
+instruction:^ Memory math is hard! Enter a memory address and I'll add a row to it.
+name:CALC.exe
+
+=memory=
+1x3:
+    ,   `,    
+
+=source=

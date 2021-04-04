@@ -2,7 +2,9 @@
 Scenario 9
 
 =description=
-We got some credentials that don't seem to work anymore. Maybe there's still a way in. Username: USR1 Password: 0A5X
+We got some credentials that don't seem to work anymore. Maybe there's still a way in. Username: USR1 Password: 12
+Not a great password.
+
 
 =wincondition=
 description:Success is achieved when 'HIGH' is a line in the output

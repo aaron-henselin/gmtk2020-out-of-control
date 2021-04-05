@@ -14,12 +14,21 @@ PUT KBD M:0A
 --
 =metadata=
 prompt:Address Calculator
-instruction:^ Memory math is hard! Enter a memory address and I'll add a row to it.
+instruction:^ Behold, the human friendly memory calculator. Just type in your command like this '{address}{increment}' and this program will increase the address by the number specified. Makes math fun! Try 'M:0A1' to see it in action
 name:CALC.exe
 
 =memory=
-1x3:
-    ,   `,    
-
+3x4:
+    ,    ,    ,   `
+	,    ,    ,
+	,    ,    ,
 =source=
 PUT KBD M:0A
+PUT M:0A 1:2A
+PUT M:1A 1:4A
+PUT `SEEK 1:0A
+PUT `     1:1A
+PUT `M:0A 1:2A
+PUT M:3A 1:3A
+EXEC 1:**
+PUT M:0A PRINT

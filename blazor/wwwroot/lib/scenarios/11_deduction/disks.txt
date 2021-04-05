@@ -3,31 +3,22 @@ name:Keystore
 readonly:true
 
 =contents=
-3x4:
-USR1,#12  ,DENY,HIGH
-USR2,#~451,DENY,HIGH
-USR3,#~451,DENY,LOW
-
+7x5:
+USR1,#121 ,DENY,HIGH,
+USR2,#0451,DENY,HIGH,
+USR3,#0451,DENY,LOW,
+USR2,#0451,DENY,HIGH,
+USR3,#0451,DENY,LOW,
+USR3,#0451,DENY,LOW,
+USR3,#0451,DENY,LOW,
 --
 
 =metadata=
-name:BACKUP
-readonly:true
-
-=contents=
-3x4:
-USR1,#12  ,    ,HIGH
-USR2,#~451,    ,HIGH
-USR3,#~451,    ,LOW
-
---
-
-=metadata=
-name:QUERY_TEMPLATE
+name:CALC.EXE
 readonly:false
 
 =contents=
-2x4:
-QUER,Y   ,*:0*,
-FOR ,@U/`,    ,   
+1x5:
+SEEK,   ,    ,    ,    
+ 
 

@@ -473,6 +473,9 @@ namespace gmtk2020_blazor.Models.Cpu
         {
             var substring = line.Substring(5);
             var parts = substring.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length != 2)
+                throw new InvalidOperationException("SEEK expects two arguments, but found " + parts.Length+". ("+line+")");
+
             var target = Target.ResolveTarget(parts[0]);
             var amt = Target.ResolveTarget(parts[1]);
             return new SeekCpuCommand
@@ -496,10 +499,13 @@ namespace gmtk2020_blazor.Models.Cpu
             else
                 region = context.Scenario.Disks[currentMediaTarget.Coordinate.DriveId.Value];
 
+            Console.WriteLine($"Seeking {currentMediaTarget.Coordinate} by {advanceAmount}");
+            //0:0A0:1A        
             var current = currentMediaTarget.Coordinate;
             for (int i = 0; i < advanceAmount; i++)
                 current = region.NextAddress(current);
 
+            Console.WriteLine($"Seeked to {current}");
 
             Target.WriteToTarget(scenario, current.ToString(), context);
         }
@@ -532,10 +538,15 @@ namespace gmtk2020_blazor.Models.Cpu
                 fullText += readValue;
             }
 
+            var lines = fullText.Split(new[] {'|'});
 
-            var dynamicQuery = QueryCpuCommand.FromText(fullText);
-            scenario.CpuLog.Log("~:" + dynamicQuery.ToString());
-            dynamicQuery.Run(scenario, context);
+            var dynamicCommands = FileReader.ReadCpuCommands(lines);
+            foreach (var dynamicCommand in dynamicCommands)
+            {
+                scenario.CpuLog.Log("~:" + dynamicCommand.ToString());
+                dynamicCommand.Run(scenario,context);
+            }
+
         }
 
         public static ExecCpuCommand FromText(string text)

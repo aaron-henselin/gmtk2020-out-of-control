@@ -10,6 +10,11 @@ name:Login.exe
 
 =source=
 PUT KBD M:0A
+PUT M:0A @U
+QUERY 0:1* FOR @U
+PUT @Index M:0B
+SEEK M:0B `3
+PUT XM:0B PRINT
 
 --
 =metadata=
